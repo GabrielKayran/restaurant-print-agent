@@ -5,6 +5,13 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { enableAutostart, isAutostartEnabled } from './autostart.js';
 import type { AgentConfig } from './types.js';
+import {
+  showAutostartCreated,
+  showAutostartFailed,
+  showFirstRunHeader,
+  showKeyEmpty,
+  showKeySaved,
+} from './ui.js';
 
 /**
  * API URL is hardcoded at build time.
@@ -88,45 +95,33 @@ export async function loadConfig(): Promise<AgentConfig> {
     };
   }
 
-  // First run — prompt for API key
-  console.log('');
-  console.log('============================================');
-  console.log('   Print Agent — Primeira execucao');
-  console.log('============================================');
-  console.log('');
-  console.log('Cole a chave do agente (API Key) gerada no');
-  console.log('painel: Configuracoes > Impressoras > Chave');
-  console.log('');
+  // First run
+  showFirstRunHeader();
 
   let agentKey = '';
   while (!agentKey) {
-    agentKey = await promptLine('API Key: ');
+    agentKey = await promptLine('  API Key: ');
     if (!agentKey) {
-      console.log('A chave nao pode ser vazia. Tente novamente.');
+      showKeyEmpty();
     }
   }
 
   const agentId = generateAgentId();
-
   savePersistedData({ agentKey, agentId });
-
-  console.log('');
-  console.log(`Chave salva com sucesso! (agentId: ${agentId})`);
+  showKeySaved(agentId);
 
   // Offer autostart on Windows
   if (platform() === 'win32' && !isAutostartEnabled()) {
     console.log('');
-    const answer = await promptLine(
-      'Deseja que o agente inicie automaticamente ao ligar o PC? (S/n): ',
-    );
+    const answer = await promptLine('  Iniciar automaticamente ao ligar o PC? (S/n): ');
     const yes = !answer || answer.toLowerCase() === 's';
 
     if (yes) {
       const ok = enableAutostart();
       if (ok) {
-        console.log('Atalho criado! O agente vai iniciar automaticamente.');
+        showAutostartCreated();
       } else {
-        console.log('Nao foi possivel criar o atalho. Voce pode configurar manualmente depois.');
+        showAutostartFailed();
       }
     }
   }

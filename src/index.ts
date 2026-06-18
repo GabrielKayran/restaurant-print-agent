@@ -7,6 +7,15 @@ import { log, logError } from './logger.js';
 import { discoverPrinters } from './printer-discovery.js';
 import { ConnectionManager } from './socket-client.js';
 import type { RegisteredPrinter } from './types.js';
+import {
+  showBanner,
+  showFatalError,
+  showPrinters,
+  showRunning,
+  showShutdown,
+  showStep,
+  showWarning,
+} from './ui.js';
 import { CURRENT_VERSION } from './version.js';
 import { checkForUpdates } from './version-check.js';
 
@@ -31,36 +40,36 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  log(`Print Agent v${CURRENT_VERSION} iniciando...`);
+  showBanner(CURRENT_VERSION);
   await checkForUpdates();
 
+  showStep('Carregando configuracao...');
   const config = await loadConfig();
-  log(`Configuracao carregada: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
+  log(`Config loaded: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
 
-  // 2. Initialize API client
   const apiClient = new ApiClient(config);
 
-  // 3. Discover printers
+  showStep('Descobrindo impressoras...');
   const discovered = discoverPrinters();
+  showPrinters(discovered.map((p) => p.deviceName));
+
   if (discovered.length === 0) {
-    log('Nenhuma impressora encontrada. O agente vai iniciar, mas nao podera imprimir.');
+    showWarning('O agente vai iniciar, mas nao podera imprimir.');
   }
 
-  // 4. Register printers with backend
   let registeredPrinters: RegisteredPrinter[] = [];
   try {
+    showStep('Registrando impressoras no servidor...');
     registeredPrinters = await apiClient.registerPrinters(discovered);
   } catch (error) {
     logError('Falha ao registrar impressoras. Tentara novamente ao reconectar.', error);
   }
 
-  // 5. Initialize job processor
   const jobProcessor = new JobProcessor(apiClient);
   jobProcessor.updatePrinters(registeredPrinters);
 
   const printerIds = registeredPrinters.map((p) => p.id);
 
-  // Job queue for sequential processing per printer
   let processingQueue = Promise.resolve();
   function enqueueJob(jobId: string): void {
     processingQueue = processingQueue
@@ -68,14 +77,13 @@ async function main(): Promise<void> {
       .catch((error) => logError(`Unexpected error processing job ${jobId}`, error));
   }
 
-  // 6. Set up connection manager (socket + polling fallback)
+  showStep('Conectando ao servidor...');
+
   const connectionManager = new ConnectionManager(
     config,
-    // onJobCreated (from socket)
     (event) => {
       enqueueJob(event.jobId);
     },
-    // onPollTick
     async () => {
       if (printerIds.length === 0) return;
       try {
@@ -87,9 +95,7 @@ async function main(): Promise<void> {
         logError('Falha ao buscar jobs pendentes', error);
       }
     },
-    // onReconnect
     async () => {
-      // Re-register printers on reconnect
       try {
         const freshPrinters = await apiClient.registerPrinters(discovered);
         jobProcessor.updatePrinters(freshPrinters);
@@ -100,7 +106,6 @@ async function main(): Promise<void> {
         logError('Falha ao re-registrar impressoras ao reconectar', error);
       }
 
-      // Fetch accumulated PENDING jobs
       if (printerIds.length > 0) {
         try {
           const pendingJobs = await apiClient.listPendingJobs(printerIds);
@@ -117,11 +122,10 @@ async function main(): Promise<void> {
 
   connectionManager.start();
 
-  log('Print Agent rodando. Pressione Ctrl+C para parar.');
+  showRunning();
 
-  // Graceful shutdown
   const shutdown = (): void => {
-    log('Encerrando...');
+    showShutdown();
     connectionManager.stop();
     process.exit(0);
   };
@@ -129,7 +133,6 @@ async function main(): Promise<void> {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  // Keep the process alive
   setInterval(() => {}, 60_000);
 }
 
@@ -144,18 +147,21 @@ function waitForEnter(): Promise<void> {
 }
 
 process.on('uncaughtException', async (error) => {
+  showFatalError(error);
   logError('Erro nao tratado', error);
   await waitForEnter();
   process.exit(1);
 });
 
 process.on('unhandledRejection', async (reason) => {
+  showFatalError(reason);
   logError('Promise rejeitada nao tratada', reason);
   await waitForEnter();
   process.exit(1);
 });
 
 main().catch(async (error) => {
+  showFatalError(error);
   logError('Erro fatal', error);
   await waitForEnter();
   process.exit(1);

@@ -39,7 +39,7 @@ $s = $ws.CreateShortcut('${shortcutPath.replace(/'/g, "''")}');
 $s.TargetPath = '${exePath.replace(/'/g, "''")}';
 $s.WorkingDirectory = '${exePath.replace(/[/\\][^/\\]+$/, '').replace(/'/g, "''")}';
 $s.Description = 'Restaurant Print Agent';
-$s.WindowStyle = 7;
+$s.WindowStyle = 0;
 $s.Save();
 `.trim();
 

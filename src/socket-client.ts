@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
-import { log, logError, logWarn } from './logger.js';
+import { log, logError } from './logger.js';
 import type { AgentConfig, PrintJobCreatedEvent } from './types.js';
+import { showConnected, showDisconnected, showJobReceived, showReconnected } from './ui.js';
 
 export interface SocketClientCallbacks {
   onJobCreated: (event: PrintJobCreatedEvent) => void;
@@ -38,23 +39,26 @@ export class SocketClient {
     });
 
     this.socket.on('connect', () => {
-      log('WebSocket conectado');
+      log('WebSocket connected');
       this._connected = true;
+      showConnected();
       this.callbacks.onConnect();
     });
 
     this.socket.on('disconnect', (reason) => {
-      logWarn(`WebSocket desconectado: ${reason}`);
+      log(`WebSocket disconnected: ${reason}`);
       this._connected = false;
+      showDisconnected();
       this.callbacks.onDisconnect();
     });
 
     this.socket.on('connect_error', (error) => {
-      logError(`Erro de conexao WebSocket: ${error.message}`);
+      logError(`WebSocket connection error: ${error.message}`);
     });
 
     this.socket.on('print.job.created', (event: PrintJobCreatedEvent) => {
-      log(`Job de impressao recebido: ${event.jobId} (${event.type})`);
+      log(`Print job received: ${event.jobId} (${event.type})`);
+      showJobReceived(event.jobId, event.type);
       this.callbacks.onJobCreated(event);
     });
   }
@@ -103,9 +107,9 @@ export class ConnectionManager {
     this.stopPolling();
     this.clearFallbackTimer();
 
-    // On reconnect, fetch any accumulated PENDING jobs
+    showReconnected();
     this.onReconnect().catch((err) => {
-      logError('Falha ao buscar jobs pendentes ao reconectar', err);
+      logError('Failed to fetch pending jobs on reconnect', err);
     });
   }
 

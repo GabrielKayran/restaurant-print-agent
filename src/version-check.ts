@@ -1,4 +1,4 @@
-import { log } from './logger.js';
+import { showUpdateAvailable, showUpToDate } from './ui.js';
 import { CURRENT_VERSION } from './version.js';
 
 const REPO = 'GabrielKayran/restaurant-print-agent';
@@ -14,15 +14,9 @@ export async function checkForUpdates(): Promise<void> {
     const latest = data.tag_name.replace(/^v/, '');
 
     if (latest !== CURRENT_VERSION) {
-      console.log('');
-      console.log('=============================================');
-      console.log(`  Nova versao disponivel: v${latest}`);
-      console.log(`  Versao atual: v${CURRENT_VERSION}`);
-      console.log(`  Baixe em: ${data.html_url}`);
-      console.log('=============================================');
-      console.log('');
+      showUpdateAvailable(CURRENT_VERSION, latest, data.html_url);
     } else {
-      log(`Versao v${CURRENT_VERSION} esta atualizada`);
+      showUpToDate();
     }
   } catch {
     // silent — don't break if offline

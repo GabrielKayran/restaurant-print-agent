@@ -1,6 +1,7 @@
 import ThermalPrinter, { PrinterTypes } from 'node-thermal-printer';
 import { ApiClient } from './api-client.js';
 import { log, logError, logWarn } from './logger.js';
+import { showJobFailed, showJobPrinted } from './ui.js';
 import { buildExpeditionTicket } from './templates/expedition-ticket.js';
 import { buildKitchenTicket } from './templates/kitchen-ticket.js';
 import { buildReceipt } from './templates/receipt.js';
@@ -90,7 +91,8 @@ export class JobProcessor {
           await this.sendToPrinter(printer.deviceName, buffer);
         }
 
-        log(`Job ${jobId} impresso com sucesso em ${printer.deviceName}`);
+        showJobPrinted(jobId, printer.deviceName);
+        log(`Job ${jobId} printed on ${printer.deviceName}`);
         await this.apiClient.updateJobStatus(jobId, 'COMPLETED');
         return;
       } catch (error) {
@@ -100,10 +102,11 @@ export class JobProcessor {
         if (attempt < MAX_LOCAL_RETRIES) {
           await sleep(RETRY_DELAY_MS);
         } else {
-          logError(`Job ${jobId} falhou apos ${MAX_LOCAL_RETRIES} tentativas`);
+          showJobFailed(jobId, msg);
+          logError(`Job ${jobId} failed after ${MAX_LOCAL_RETRIES} attempts`);
           await this.apiClient
-            .updateJobStatus(jobId, 'FAILED', `Falha na impressao: ${msg}`)
-            .catch((e) => logError('Falha ao atualizar status do job', e));
+            .updateJobStatus(jobId, 'FAILED', `Print failed: ${msg}`)
+            .catch((e) => logError('Failed to update job status', e));
         }
       }
     }
