@@ -131,5 +131,25 @@ export async function loadConfig(): Promise<AgentConfig> {
   return { apiUrl, agentKey, agentId };
 }
 
+export async function reconfigureKey(): Promise<AgentConfig> {
+  const apiUrl = (process.env.AGENT_API_URL || DEFAULT_API_URL).replace(/\/+$/, '');
+  const persisted = readPersistedData();
+  const agentId = persisted?.agentId || generateAgentId();
+
+  let agentKey = '';
+  while (!agentKey) {
+    agentKey = await promptLine('  Nova API Key: ');
+    if (!agentKey) {
+      showKeyEmpty();
+    }
+  }
+
+  savePersistedData({ agentKey, agentId });
+  showKeySaved(agentId);
+  console.log('');
+
+  return { apiUrl, agentKey, agentId };
+}
+
 // Exported for testing
 export { generateAgentId, readPersistedData, savePersistedData, getDataPath };

@@ -1,15 +1,16 @@
 import { createInterface } from 'node:readline';
-import { ApiClient } from './api-client.js';
+import { ApiClient, AuthError } from './api-client.js';
 import { disableAutostart } from './autostart.js';
-import { loadConfig } from './config.js';
+import { loadConfig, reconfigureKey } from './config.js';
 import { JobProcessor } from './job-processor.js';
 import { log, logError } from './logger.js';
 import { discoverPrinters } from './printer-discovery.js';
 import { ConnectionManager } from './socket-client.js';
-import type { RegisteredPrinter } from './types.js';
+import type { AgentConfig, RegisteredPrinter } from './types.js';
 import {
   showBanner,
   showFatalError,
+  showInvalidKey,
   showPrinters,
   showRunning,
   showShutdown,
@@ -35,6 +36,31 @@ function handleCliFlags(): boolean {
   return false;
 }
 
+async function authenticateAndRegister(
+  config: AgentConfig,
+  discovered: ReturnType<typeof discoverPrinters>,
+): Promise<{ apiClient: ApiClient; registeredPrinters: RegisteredPrinter[] }> {
+  let currentConfig = config;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const apiClient = new ApiClient(currentConfig);
+    try {
+      showStep('Registrando impressoras no servidor...');
+      const registeredPrinters = await apiClient.registerPrinters(discovered);
+      return { apiClient, registeredPrinters };
+    } catch (error) {
+      if (error instanceof AuthError) {
+        showInvalidKey();
+        currentConfig = await reconfigureKey();
+        continue;
+      }
+      logError('Falha ao registrar impressoras. Tentara novamente ao reconectar.', error);
+      return { apiClient, registeredPrinters: [] };
+    }
+  }
+}
+
 async function main(): Promise<void> {
   if (handleCliFlags()) {
     process.exit(0);
@@ -47,8 +73,6 @@ async function main(): Promise<void> {
   const config = await loadConfig();
   log(`Config loaded: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
 
-  const apiClient = new ApiClient(config);
-
   showStep('Descobrindo impressoras...');
   const discovered = discoverPrinters();
   showPrinters(discovered.map((p) => p.deviceName));
@@ -57,13 +81,7 @@ async function main(): Promise<void> {
     showWarning('O agente vai iniciar, mas nao podera imprimir.');
   }
 
-  let registeredPrinters: RegisteredPrinter[] = [];
-  try {
-    showStep('Registrando impressoras no servidor...');
-    registeredPrinters = await apiClient.registerPrinters(discovered);
-  } catch (error) {
-    logError('Falha ao registrar impressoras. Tentara novamente ao reconectar.', error);
-  }
+  const { apiClient, registeredPrinters } = await authenticateAndRegister(config, discovered);
 
   const jobProcessor = new JobProcessor(apiClient);
   jobProcessor.updatePrinters(registeredPrinters);
@@ -92,7 +110,13 @@ async function main(): Promise<void> {
           enqueueJob(job.id);
         }
       } catch (error) {
-        logError('Falha ao buscar jobs pendentes', error);
+        if (error instanceof AuthError) {
+          showInvalidKey();
+          const newConfig = await reconfigureKey();
+          apiClient.updateKey(newConfig.agentKey);
+        } else {
+          logError('Falha ao buscar jobs pendentes', error);
+        }
       }
     },
     async () => {
@@ -103,7 +127,13 @@ async function main(): Promise<void> {
         printerIds.length = 0;
         printerIds.push(...freshIds);
       } catch (error) {
-        logError('Falha ao re-registrar impressoras ao reconectar', error);
+        if (error instanceof AuthError) {
+          showInvalidKey();
+          const newConfig = await reconfigureKey();
+          apiClient.updateKey(newConfig.agentKey);
+        } else {
+          logError('Falha ao re-registrar impressoras ao reconectar', error);
+        }
       }
 
       if (printerIds.length > 0) {

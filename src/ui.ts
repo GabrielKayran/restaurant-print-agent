@@ -42,6 +42,16 @@ export function showKeySaved(agentId: string): void {
   console.log(`${dim}  ID do agente: ${agentId}${reset}`);
 }
 
+export function showInvalidKey(): void {
+  console.log('');
+  console.log(`  ${bgRed}${white}${bold} CHAVE INVALIDA ${reset}`);
+  console.log(`  A chave do agente foi revogada ou esta incorreta.`);
+  console.log(
+    `  Gere uma nova chave no painel: ${bold}Configuracoes > Impressoras > Chave${reset}`,
+  );
+  console.log('');
+}
+
 export function showKeyEmpty(): void {
   console.log(`  ${yellow}⚠ A chave nao pode ser vazia. Tente novamente.${reset}`);
 }

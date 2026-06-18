@@ -7,9 +7,16 @@ import type {
   RegisteredPrinter,
 } from './types.js';
 
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
-  private readonly headers: Record<string, string>;
+  private headers: Record<string, string>;
 
   constructor(private readonly config: AgentConfig) {
     this.baseUrl = config.apiUrl;
@@ -17,6 +24,10 @@ export class ApiClient {
       'Content-Type': 'application/json',
       'X-Agent-Key': config.agentKey,
     };
+  }
+
+  updateKey(newKey: string): void {
+    this.headers['X-Agent-Key'] = newKey;
   }
 
   async registerPrinters(printers: DiscoveredPrinter[]): Promise<RegisteredPrinter[]> {
@@ -68,6 +79,9 @@ export class ApiClient {
 
       if (!response.ok) {
         const text = await response.text().catch(() => 'No response body');
+        if (response.status === 401) {
+          throw new AuthError(text);
+        }
         throw new Error(`HTTP ${response.status}: ${text}`);
       }
 
