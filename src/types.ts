@@ -4,9 +4,10 @@ export interface AgentConfig {
   agentId: string;
 }
 
-export type PrintJobType = 'KITCHEN_TICKET' | 'EXPEDITION_TICKET' | 'RECEIPT';
+export type PrintJobType = 'KITCHEN_TICKET' | 'EXPEDITION_TICKET' | 'RECEIPT' | 'TEST_PAGE';
 export type PrintJobStatus = 'PENDING' | 'PRINTING' | 'COMPLETED' | 'FAILED';
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+export type PrinterType = 'THERMAL' | 'STANDARD';
 
 export interface PrintJob {
   id: string;
@@ -76,6 +77,7 @@ export interface PaymentInfo {
 
 export interface DiscoveredPrinter {
   deviceName: string;
+  printerType: PrinterType;
   paperWidth: number;
 }
 
@@ -85,9 +87,18 @@ export interface RegisteredPrinter {
   name: string;
   deviceName: string;
   agentId: string;
+  printerType: PrinterType;
   paperWidth: number;
   isOnline: boolean;
   lastSeenAt: string | null;
+}
+
+export interface TestPagePayload {
+  printerName: string;
+  deviceName: string;
+  unitName: string;
+  paperWidth: number;
+  printedAt: string;
 }
 
 export interface PrinterStatusReport {

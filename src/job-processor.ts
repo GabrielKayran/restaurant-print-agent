@@ -5,7 +5,8 @@ import { showJobFailed, showJobPrinted } from './ui.js';
 import { buildExpeditionTicket } from './templates/expedition-ticket.js';
 import { buildKitchenTicket } from './templates/kitchen-ticket.js';
 import { buildReceipt } from './templates/receipt.js';
-import type { PrintJob, PrintJobType, RegisteredPrinter } from './types.js';
+import { buildTestPage } from './templates/test-page.js';
+import type { PrintJob, PrintJobType, RegisteredPrinter, TestPagePayload } from './types.js';
 
 const MAX_LOCAL_RETRIES = 3;
 const RETRY_DELAY_MS = 5_000;
@@ -124,6 +125,8 @@ export class JobProcessor {
         return buildExpeditionTicket(payload, paperWidth);
       case 'RECEIPT':
         return buildReceipt(payload, paperWidth);
+      case 'TEST_PAGE':
+        return buildTestPage(payload as unknown as TestPagePayload, paperWidth);
       default:
         throw new Error(`Unknown job type: ${type}`);
     }
