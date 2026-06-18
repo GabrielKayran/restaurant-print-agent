@@ -20,14 +20,14 @@ export class ApiClient {
   }
 
   async registerPrinters(printers: DiscoveredPrinter[]): Promise<RegisteredPrinter[]> {
-    log(`Registering ${printers.length} printer(s)...`);
+    log(`Registrando ${printers.length} impressora(s)...`);
 
     const response = await this.request<RegisteredPrinter[]>('POST', '/agent/printers/register', {
       agentId: this.config.agentId,
       printers,
     });
 
-    log(`Registered ${response.length} printer(s) successfully`);
+    log(`${response.length} impressora(s) registrada(s) com sucesso`);
     return response;
   }
 
@@ -76,7 +76,7 @@ export class ApiClient {
       if (error instanceof Error && error.message.startsWith('HTTP ')) {
         throw error;
       }
-      logError(`API request failed: ${method} ${path}`, error);
+      logError(`Falha na requisicao API: ${method} ${path}`, error);
       throw error;
     }
   }

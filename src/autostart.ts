@@ -48,10 +48,10 @@ $s.Save();
       windowsHide: true,
     });
 
-    log('Autostart shortcut created in Windows Startup folder');
+    log('Atalho de inicio automatico criado na pasta Startup do Windows');
     return true;
   } catch (error) {
-    logWarn(`Failed to create autostart shortcut: ${error}`);
+    logWarn(`Falha ao criar atalho de inicio automatico: ${error}`);
     return false;
   }
 }
@@ -65,10 +65,10 @@ export function disableAutostart(): boolean {
 
   try {
     unlinkSync(shortcutPath);
-    log('Autostart shortcut removed');
+    log('Atalho de inicio automatico removido');
     return true;
   } catch (error) {
-    logWarn(`Failed to remove autostart shortcut: ${error}`);
+    logWarn(`Falha ao remover atalho de inicio automatico: ${error}`);
     return false;
   }
 }

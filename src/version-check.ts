@@ -22,7 +22,7 @@ export async function checkForUpdates(): Promise<void> {
       console.log('=============================================');
       console.log('');
     } else {
-      log(`Version v${CURRENT_VERSION} is up to date`);
+      log(`Versao v${CURRENT_VERSION} esta atualizada`);
     }
   } catch {
     // silent — don't break if offline

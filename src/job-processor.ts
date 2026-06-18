@@ -44,29 +44,28 @@ export class JobProcessor {
     try {
       job = await this.apiClient.getJob(jobId);
     } catch (error) {
-      logError(`Failed to fetch job ${jobId}`, error);
+      logError(`Falha ao buscar job ${jobId}`, error);
       return;
     }
 
     if (job.status !== 'PENDING') {
-      log(`Job ${jobId} is already ${job.status}, skipping`);
+      log(`Job ${jobId} ja esta ${job.status}, pulando`);
       return;
     }
 
     const printer = this.printerMap.get(job.printerId);
     if (!printer) {
-      logError(`No printer found for job ${jobId} (printerId: ${job.printerId})`);
+      logError(`Impressora nao encontrada para job ${jobId} (printerId: ${job.printerId})`);
       await this.apiClient
-        .updateJobStatus(jobId, 'FAILED', 'Printer not registered on this agent')
-        .catch((e) => logError('Failed to update job status', e));
+        .updateJobStatus(jobId, 'FAILED', 'Impressora nao registrada neste agente')
+        .catch((e) => logError('Falha ao atualizar status do job', e));
       return;
     }
 
-    // Mark as PRINTING
     try {
       await this.apiClient.updateJobStatus(jobId, 'PRINTING');
     } catch (error) {
-      logError(`Failed to mark job ${jobId} as PRINTING`, error);
+      logError(`Falha ao marcar job ${jobId} como PRINTING`, error);
       return;
     }
 
@@ -76,10 +75,10 @@ export class JobProcessor {
       buffer = this.generateBuffer(job.type, job.payload, printer.paperWidth);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      logError(`Failed to generate ticket for job ${jobId}`, error);
+      logError(`Falha ao gerar ticket para job ${jobId}`, error);
       await this.apiClient
-        .updateJobStatus(jobId, 'FAILED', `Template error: ${msg}`)
-        .catch((e) => logError('Failed to update job status', e));
+        .updateJobStatus(jobId, 'FAILED', `Erro no template: ${msg}`)
+        .catch((e) => logError('Falha ao atualizar status do job', e));
       return;
     }
 
@@ -91,22 +90,20 @@ export class JobProcessor {
           await this.sendToPrinter(printer.deviceName, buffer);
         }
 
-        log(`Job ${jobId} printed successfully on ${printer.deviceName}`);
+        log(`Job ${jobId} impresso com sucesso em ${printer.deviceName}`);
         await this.apiClient.updateJobStatus(jobId, 'COMPLETED');
         return;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        logWarn(
-          `Print attempt ${attempt}/${MAX_LOCAL_RETRIES} failed for job ${jobId}: ${msg}`,
-        );
+        logWarn(`Tentativa ${attempt}/${MAX_LOCAL_RETRIES} falhou para job ${jobId}: ${msg}`);
 
         if (attempt < MAX_LOCAL_RETRIES) {
           await sleep(RETRY_DELAY_MS);
         } else {
-          logError(`Job ${jobId} failed after ${MAX_LOCAL_RETRIES} attempts`);
+          logError(`Job ${jobId} falhou apos ${MAX_LOCAL_RETRIES} tentativas`);
           await this.apiClient
-            .updateJobStatus(jobId, 'FAILED', `Print failed: ${msg}`)
-            .catch((e) => logError('Failed to update job status', e));
+            .updateJobStatus(jobId, 'FAILED', `Falha na impressao: ${msg}`)
+            .catch((e) => logError('Falha ao atualizar status do job', e));
         }
       }
     }
@@ -129,10 +126,7 @@ export class JobProcessor {
     }
   }
 
-  private async sendToPrinter(
-    deviceName: string,
-    buffer: Buffer,
-  ): Promise<void> {
+  private async sendToPrinter(deviceName: string, buffer: Buffer): Promise<void> {
     const printer = new ThermalPrinter.printer({
       type: PrinterTypes.EPSON,
       interface: deviceName,
@@ -144,7 +138,7 @@ export class JobProcessor {
 
     const isConnected = await printer.isPrinterConnected();
     if (!isConnected) {
-      throw new Error(`Printer "${deviceName}" is not connected`);
+      throw new Error(`Impressora "${deviceName}" nao esta conectada`);
     }
 
     printer.raw(buffer);

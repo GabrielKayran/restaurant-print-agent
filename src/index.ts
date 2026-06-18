@@ -30,12 +30,11 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  log(`Print Agent v${CURRENT_VERSION} starting...`);
+  log(`Print Agent v${CURRENT_VERSION} iniciando...`);
   await checkForUpdates();
 
-  // 1. Load config (prompts for an API key on first run)
   const config = await loadConfig();
-  log(`Config loaded: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
+  log(`Configuracao carregada: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
 
   // 2. Initialize API client
   const apiClient = new ApiClient(config);
@@ -43,7 +42,7 @@ async function main(): Promise<void> {
   // 3. Discover printers
   const discovered = discoverPrinters();
   if (discovered.length === 0) {
-    log('No printers discovered. The agent will start but cannot print.');
+    log('Nenhuma impressora encontrada. O agente vai iniciar, mas nao podera imprimir.');
   }
 
   // 4. Register printers with backend
@@ -51,7 +50,7 @@ async function main(): Promise<void> {
   try {
     registeredPrinters = await apiClient.registerPrinters(discovered);
   } catch (error) {
-    logError('Failed to register printers. Will retry on reconnect.', error);
+    logError('Falha ao registrar impressoras. Tentara novamente ao reconectar.', error);
   }
 
   // 5. Initialize job processor
@@ -84,7 +83,7 @@ async function main(): Promise<void> {
           enqueueJob(job.id);
         }
       } catch (error) {
-        logError('Failed to poll pending jobs', error);
+        logError('Falha ao buscar jobs pendentes', error);
       }
     },
     // onReconnect
@@ -97,19 +96,19 @@ async function main(): Promise<void> {
         printerIds.length = 0;
         printerIds.push(...freshIds);
       } catch (error) {
-        logError('Failed to re-register printers on reconnect', error);
+        logError('Falha ao re-registrar impressoras ao reconectar', error);
       }
 
       // Fetch accumulated PENDING jobs
       if (printerIds.length > 0) {
         try {
           const pendingJobs = await apiClient.listPendingJobs(printerIds);
-          log(`Found ${pendingJobs.length} pending job(s) after reconnect`);
+          log(`${pendingJobs.length} job(s) pendente(s) encontrado(s) apos reconexao`);
           for (const job of pendingJobs) {
             enqueueJob(job.id);
           }
         } catch (error) {
-          logError('Failed to fetch pending jobs on reconnect', error);
+          logError('Falha ao buscar jobs pendentes apos reconexao', error);
         }
       }
     },
@@ -117,11 +116,11 @@ async function main(): Promise<void> {
 
   connectionManager.start();
 
-  log('Print Agent is running. Press Ctrl+C to stop.');
+  log('Print Agent rodando. Pressione Ctrl+C para parar.');
 
   // Graceful shutdown
   const shutdown = (): void => {
-    log('Shutting down...');
+    log('Encerrando...');
     connectionManager.stop();
     process.exit(0);
   };
@@ -133,7 +132,19 @@ async function main(): Promise<void> {
   setInterval(() => {}, 60_000);
 }
 
-main().catch((error) => {
-  logError('Fatal error', error);
+async function waitForEnter(): Promise<void> {
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question('\nPressione Enter para fechar...', () => {
+      rl.close();
+      resolve();
+    });
+  });
+}
+
+main().catch(async (error) => {
+  logError('Erro fatal', error);
+  await waitForEnter();
   process.exit(1);
 });

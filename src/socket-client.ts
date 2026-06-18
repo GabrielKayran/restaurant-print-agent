@@ -24,7 +24,7 @@ export class SocketClient {
   connect(): void {
     const url = `${this.config.apiUrl}/printing`;
 
-    log(`Connecting to WebSocket at ${url}...`);
+    log(`Conectando ao WebSocket em ${url}...`);
 
     this.socket = io(url, {
       auth: {
@@ -38,23 +38,23 @@ export class SocketClient {
     });
 
     this.socket.on('connect', () => {
-      log('WebSocket connected');
+      log('WebSocket conectado');
       this._connected = true;
       this.callbacks.onConnect();
     });
 
     this.socket.on('disconnect', (reason) => {
-      logWarn(`WebSocket disconnected: ${reason}`);
+      logWarn(`WebSocket desconectado: ${reason}`);
       this._connected = false;
       this.callbacks.onDisconnect();
     });
 
     this.socket.on('connect_error', (error) => {
-      logError(`WebSocket connection error: ${error.message}`);
+      logError(`Erro de conexao WebSocket: ${error.message}`);
     });
 
     this.socket.on('print.job.created', (event: PrintJobCreatedEvent) => {
-      log(`Received print job event: ${event.jobId} (${event.type})`);
+      log(`Job de impressao recebido: ${event.jobId} (${event.type})`);
       this.callbacks.onJobCreated(event);
     });
   }
@@ -105,7 +105,7 @@ export class ConnectionManager {
 
     // On reconnect, fetch any accumulated PENDING jobs
     this.onReconnect().catch((err) => {
-      logError('Failed to fetch pending jobs on reconnect', err);
+      logError('Falha ao buscar jobs pendentes ao reconectar', err);
     });
   }
 
@@ -116,7 +116,7 @@ export class ConnectionManager {
     this.fallbackTimer = setTimeout(() => {
       if (!this.socketClient.connected) {
         log(
-          `Socket still disconnected after ${POLLING_FALLBACK_DELAY_MS / 1000}s, starting polling fallback`,
+          `Socket ainda desconectado apos ${POLLING_FALLBACK_DELAY_MS / 1000}s, iniciando polling de fallback`,
         );
         this.startPolling();
       }
@@ -126,14 +126,14 @@ export class ConnectionManager {
   private startPolling(): void {
     if (this.pollingTimer) return;
 
-    log(`Starting polling every ${POLLING_INTERVAL_MS / 1000}s`);
+    log(`Iniciando polling a cada ${POLLING_INTERVAL_MS / 1000}s`);
     this.pollingTimer = setInterval(() => {
       if (this.socketClient.connected) {
         this.stopPolling();
         return;
       }
       this.onPollTick().catch((err) => {
-        logError('Polling tick failed', err);
+        logError('Falha no polling', err);
       });
     }, POLLING_INTERVAL_MS);
   }
@@ -142,7 +142,7 @@ export class ConnectionManager {
     if (this.pollingTimer) {
       clearInterval(this.pollingTimer);
       this.pollingTimer = null;
-      log('Polling stopped');
+      log('Polling parado');
     }
   }
 

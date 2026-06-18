@@ -28,7 +28,7 @@ function discoverWindows(): DiscoveredPrinter[] {
 
     return printers;
   } catch (error) {
-    logWarn('PowerShell printer discovery failed, trying wmic fallback...');
+    logWarn('Descoberta de impressoras via PowerShell falhou, tentando wmic...');
     return discoverWindowsWmic();
   }
 }
@@ -57,7 +57,7 @@ function discoverWindowsWmic(): DiscoveredPrinter[] {
 
     return printers;
   } catch {
-    logWarn('WMIC printer discovery also failed');
+    logWarn('Descoberta via WMIC tambem falhou');
     return [];
   }
 }
@@ -84,14 +84,14 @@ function discoverLinux(): DiscoveredPrinter[] {
 
     return printers;
   } catch {
-    logWarn('Linux printer discovery failed');
+    logWarn('Descoberta de impressoras no Linux falhou');
     return [];
   }
 }
 
 export function discoverPrinters(): DiscoveredPrinter[] {
   const os = platform();
-  log(`Discovering printers on ${os}...`);
+  log(`Descobrindo impressoras em ${os}...`);
 
   let printers: DiscoveredPrinter[];
 
@@ -100,10 +100,12 @@ export function discoverPrinters(): DiscoveredPrinter[] {
   } else if (os === 'linux') {
     printers = discoverLinux();
   } else {
-    logWarn(`Unsupported platform: ${os}. No printers discovered.`);
+    logWarn(`Plataforma nao suportada: ${os}. Nenhuma impressora encontrada.`);
     printers = [];
   }
 
-  log(`Discovered ${printers.length} printer(s): ${printers.map((p) => p.deviceName).join(', ') || 'none'}`);
+  log(
+    `${printers.length} impressora(s) encontrada(s): ${printers.map((p) => p.deviceName).join(', ') || 'nenhuma'}`,
+  );
   return printers;
 }
