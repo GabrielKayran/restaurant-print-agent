@@ -32,12 +32,12 @@ jobs:
         run: npm run bundle
 
       - name: Package executable
-        run: npx @yao-pkg/pkg dist/bundle.cjs --targets node20-win-x64 --output build/print-agent-${{ github.ref_name }}.exe --config package.json
+        run: npx @yao-pkg/pkg dist/bundle.cjs --targets node20-win-x64 --output build/print-agent.exe --config package.json
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/print-agent-${{ github.ref_name }}.exe
+          files: build/print-agent.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
