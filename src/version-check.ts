@@ -7,9 +7,7 @@ export async function checkForUpdates(): Promise<void> {
   if (CURRENT_VERSION === '0.0.0-dev') return; // skip in dev
 
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${REPO}/releases/latest`,
-    );
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
     if (!res.ok) return;
 
     const data = (await res.json()) as { tag_name: string; html_url: string };
