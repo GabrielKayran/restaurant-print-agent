@@ -19,7 +19,12 @@ interface PersistedData {
 
 function getDataDir(): string {
   const isPackaged = !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
-  return isPackaged ? dirname(process.execPath) : dirname(fileURLToPath(import.meta.url));
+  if (isPackaged) return dirname(process.execPath);
+  try {
+    return dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return process.cwd();
+  }
 }
 
 function getDataPath(): string {
