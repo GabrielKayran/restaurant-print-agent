@@ -132,7 +132,7 @@ describe('ApiClient', () => {
       text: () => Promise.resolve('Unauthorized'),
     });
 
-    await expect(client.getJob('job-1')).rejects.toThrow('HTTP 401');
+    await expect(client.getJob('job-1')).rejects.toThrow('Unauthorized');
   });
 
   it('throws on network error', async () => {
