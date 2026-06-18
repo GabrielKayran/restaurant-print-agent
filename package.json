@@ -1,0 +1,29 @@
+{
+  "name": "@restaurant/print-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Print agent for automatic thermal printing of restaurant orders",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "npm run build && pkg dist/index.js --targets node18-win-x64 --output print-agent.exe --config package.json"
+  },
+  "pkg": {
+    "assets": [],
+    "outputPath": "build"
+  },
+  "dependencies": {
+    "node-thermal-printer": "^4.4.3",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@yao-pkg/pkg": "^5.15.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.9"
+  }
+}
