@@ -23,7 +23,7 @@ if (version) {
 
 const content = `// This value is replaced at build time by the inject-version script.
 // Do NOT edit manually — it is overwritten on every tagged release.
-export const CURRENT_VERSION = '${version}';
+export const CURRENT_VERSION: string = '${version}';
 `;
 
 writeFileSync(versionFile, content, 'utf-8');
