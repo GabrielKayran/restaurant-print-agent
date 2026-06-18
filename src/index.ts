@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline';
 import { ApiClient } from './api-client.js';
 import { disableAutostart } from './autostart.js';
 import { loadConfig } from './config.js';
@@ -132,8 +133,7 @@ async function main(): Promise<void> {
   setInterval(() => {}, 60_000);
 }
 
-async function waitForEnter(): Promise<void> {
-  const { createInterface } = await import('node:readline');
+function waitForEnter(): Promise<void> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
     rl.question('\nPressione Enter para fechar...', () => {
@@ -142,6 +142,18 @@ async function waitForEnter(): Promise<void> {
     });
   });
 }
+
+process.on('uncaughtException', async (error) => {
+  logError('Erro nao tratado', error);
+  await waitForEnter();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', async (reason) => {
+  logError('Promise rejeitada nao tratada', reason);
+  await waitForEnter();
+  process.exit(1);
+});
 
 main().catch(async (error) => {
   logError('Erro fatal', error);
