@@ -1,15 +1,16 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { hostname } from 'node:os';
+import { hostname, platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import { enableAutostart, isAutostartEnabled } from './autostart.js';
 import type { AgentConfig } from './types.js';
 
 /**
  * API URL is hardcoded at build time.
  * Override via AGENT_API_URL env var for development.
  */
-const DEFAULT_API_URL = 'https://api.meuchef.com.br';
+const DEFAULT_API_URL = 'https://api.kayran.dev.br';
 
 interface PersistedData {
   agentKey: string;
@@ -18,9 +19,7 @@ interface PersistedData {
 
 function getDataDir(): string {
   const isPackaged = !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
-  return isPackaged
-    ? dirname(process.execPath)
-    : dirname(fileURLToPath(import.meta.url));
+  return isPackaged ? dirname(process.execPath) : dirname(fileURLToPath(import.meta.url));
 }
 
 function getDataPath(): string {
@@ -30,7 +29,9 @@ function getDataPath(): string {
 }
 
 function generateAgentId(): string {
-  const host = hostname().toLowerCase().replace(/[^a-z0-9-]/g, '');
+  const host = hostname()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '');
   return `agent-${host || 'unknown'}`;
 }
 
@@ -70,10 +71,7 @@ function promptLine(question: string): Promise<string> {
 }
 
 export async function loadConfig(): Promise<AgentConfig> {
-  const apiUrl = (process.env.AGENT_API_URL || DEFAULT_API_URL).replace(
-    /\/+$/,
-    '',
-  );
+  const apiUrl = (process.env.AGENT_API_URL || DEFAULT_API_URL).replace(/\/+$/, '');
 
   const persisted = readPersistedData();
 
@@ -109,6 +107,25 @@ export async function loadConfig(): Promise<AgentConfig> {
 
   console.log('');
   console.log(`Chave salva com sucesso! (agentId: ${agentId})`);
+
+  // Offer autostart on Windows
+  if (platform() === 'win32' && !isAutostartEnabled()) {
+    console.log('');
+    const answer = await promptLine(
+      'Deseja que o agente inicie automaticamente ao ligar o PC? (S/n): ',
+    );
+    const yes = !answer || answer.toLowerCase() === 's';
+
+    if (yes) {
+      const ok = enableAutostart();
+      if (ok) {
+        console.log('Atalho criado! O agente vai iniciar automaticamente.');
+      } else {
+        console.log('Nao foi possivel criar o atalho. Voce pode configurar manualmente depois.');
+      }
+    }
+  }
+
   console.log('');
 
   return { apiUrl, agentKey, agentId };

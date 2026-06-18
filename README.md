@@ -25,6 +25,13 @@ API Key: pk_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 A chave e salva automaticamente — voce so precisa colar uma vez.
 
+Em seguida, o agente pergunta se deseja iniciar automaticamente ao ligar o PC:
+
+```
+Deseja que o agente inicie automaticamente ao ligar o PC? (S/n): S
+Atalho criado! O agente vai iniciar automaticamente.
+```
+
 ### 3. Pronto
 
 O agente vai:
@@ -80,14 +87,12 @@ npm run package
 
 O `.exe` sera gerado na pasta `build/`.
 
-### Instalar como servico Windows (opcional)
+### Remover inicio automatico
 
-Para rodar automaticamente ao ligar o PC, use [NSSM](https://nssm.cc/):
+Se o agente foi configurado para iniciar automaticamente e voce quer desativar:
 
 ```bash
-nssm install PrintAgent "C:\caminho\para\print-agent.exe"
-nssm set PrintAgent AppDirectory "C:\caminho\para"
-nssm start PrintAgent
+print-agent.exe --uninstall
 ```
 
 ## Variaveis de ambiente

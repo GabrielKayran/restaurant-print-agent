@@ -19,19 +19,13 @@ export class ApiClient {
     };
   }
 
-  async registerPrinters(
-    printers: DiscoveredPrinter[],
-  ): Promise<RegisteredPrinter[]> {
+  async registerPrinters(printers: DiscoveredPrinter[]): Promise<RegisteredPrinter[]> {
     log(`Registering ${printers.length} printer(s)...`);
 
-    const response = await this.request<RegisteredPrinter[]>(
-      'POST',
-      '/agent/printers/register',
-      {
-        agentId: this.config.agentId,
-        printers,
-      },
-    );
+    const response = await this.request<RegisteredPrinter[]>('POST', '/agent/printers/register', {
+      agentId: this.config.agentId,
+      printers,
+    });
 
     log(`Registered ${response.length} printer(s) successfully`);
     return response;
@@ -62,11 +56,7 @@ export class ApiClient {
     return this.request<PrintJob>('PATCH', `/agent/print-jobs/${jobId}`, body);
   }
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${this.baseUrl}${path}`;
 
     try {

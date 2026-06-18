@@ -10,7 +10,12 @@
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npm run build && pkg dist/index.js --targets node18-win-x64 --output print-agent.exe --config package.json"
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "version:inject": "node scripts/inject-version.js",
+    "package": "npm run version:inject && npm run build && pkg dist/index.js --targets node20-win-x64 --output build/print-agent.exe --config package.json"
   },
   "pkg": {
     "assets": [],
@@ -22,7 +27,13 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
     "@yao-pkg/pkg": "^5.15.0",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.8.4",
     "typescript": "^5.5.0",
     "vitest": "^4.1.9"
   }

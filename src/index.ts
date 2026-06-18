@@ -1,15 +1,39 @@
 import { ApiClient } from './api-client.js';
+import { disableAutostart } from './autostart.js';
 import { loadConfig } from './config.js';
 import { JobProcessor } from './job-processor.js';
 import { log, logError } from './logger.js';
 import { discoverPrinters } from './printer-discovery.js';
 import { ConnectionManager } from './socket-client.js';
 import type { RegisteredPrinter } from './types.js';
+import { CURRENT_VERSION } from './version.js';
+import { checkForUpdates } from './version-check.js';
+
+function handleCliFlags(): boolean {
+  const args = process.argv.slice(2);
+
+  if (args.includes('--uninstall')) {
+    const ok = disableAutostart();
+    if (ok) {
+      console.log('Inicio automatico removido com sucesso.');
+    } else {
+      console.log('Nao foi possivel remover o inicio automatico.');
+    }
+    return true;
+  }
+
+  return false;
+}
 
 async function main(): Promise<void> {
-  log('Print Agent starting...');
+  if (handleCliFlags()) {
+    process.exit(0);
+  }
 
-  // 1. Load config (prompts for API key on first run)
+  log(`Print Agent v${CURRENT_VERSION} starting...`);
+  await checkForUpdates();
+
+  // 1. Load config (prompts for an API key on first run)
   const config = await loadConfig();
   log(`Config loaded: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
 
