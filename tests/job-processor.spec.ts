@@ -134,7 +134,7 @@ describe('JobProcessor', () => {
     expect(apiClient.updateJobStatus).toHaveBeenCalledWith(
       'job-1',
       'FAILED',
-      'Printer not registered on this agent',
+      'Impressora nao registrada neste agente',
     );
   });
 
