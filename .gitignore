@@ -5,6 +5,7 @@ build/
 .env
 .env.*
 !.env.example
+.agent-data.json
 
 *.log
 
