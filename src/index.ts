@@ -5,6 +5,7 @@ import { loadConfig, reconfigureKey } from './config.js';
 import { JobProcessor } from './job-processor.js';
 import { log, logError } from './logger.js';
 import { discoverPrinters } from './printer-discovery.js';
+import { PrinterHealthMonitor } from './printer-health-monitor.js';
 import { ConnectionManager } from './socket-client.js';
 import type { AgentConfig, RegisteredPrinter } from './types.js';
 import {
@@ -42,7 +43,6 @@ async function authenticateAndRegister(
 ): Promise<{ apiClient: ApiClient; registeredPrinters: RegisteredPrinter[] }> {
   let currentConfig = config;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const apiClient = new ApiClient(currentConfig);
     try {
@@ -82,6 +82,7 @@ async function main(): Promise<void> {
   }
 
   const { apiClient, registeredPrinters } = await authenticateAndRegister(config, discovered);
+  crashApiClient = apiClient;
 
   const jobProcessor = new JobProcessor(apiClient);
   jobProcessor.updatePrinters(registeredPrinters);
@@ -152,16 +153,37 @@ async function main(): Promise<void> {
 
   connectionManager.start();
 
+  const healthMonitor = new PrinterHealthMonitor(apiClient, discovered);
+  healthMonitor.start();
+
   showRunning();
 
-  const shutdown = (): void => {
+  let shuttingDown = false;
+
+  const shutdown = async (): Promise<void> => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
     showShutdown();
+    healthMonitor.stop();
     connectionManager.stop();
+
+    try {
+      await apiClient.reportDisconnect();
+      log('Servidor notificado do desligamento');
+    } catch (error) {
+      logError('Falha ao notificar servidor do desligamento', error);
+    }
+
     process.exit(0);
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => {
+    shutdown();
+  });
+  process.on('SIGTERM', () => {
+    shutdown();
+  });
 
   setInterval(() => {}, 60_000);
 }
@@ -176,9 +198,21 @@ function waitForEnter(): Promise<void> {
   });
 }
 
+let crashApiClient: ApiClient | null = null;
+
+async function reportCrashDisconnect(): Promise<void> {
+  if (!crashApiClient) return;
+  try {
+    await crashApiClient.reportDisconnect();
+  } catch {
+    // best-effort — process is dying
+  }
+}
+
 process.on('uncaughtException', async (error) => {
   showFatalError(error);
   logError('Erro nao tratado', error);
+  await reportCrashDisconnect();
   await waitForEnter();
   process.exit(1);
 });
@@ -186,6 +220,7 @@ process.on('uncaughtException', async (error) => {
 process.on('unhandledRejection', async (reason) => {
   showFatalError(reason);
   logError('Promise rejeitada nao tratada', reason);
+  await reportCrashDisconnect();
   await waitForEnter();
   process.exit(1);
 });
@@ -193,6 +228,7 @@ process.on('unhandledRejection', async (reason) => {
 main().catch(async (error) => {
   showFatalError(error);
   logError('Erro fatal', error);
+  await reportCrashDisconnect();
   await waitForEnter();
   process.exit(1);
 });

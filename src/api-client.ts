@@ -2,6 +2,7 @@ import { log, logError } from './logger.js';
 import type {
   AgentConfig,
   DiscoveredPrinter,
+  PrinterStatusReport,
   PrintJob,
   PrintJobStatus,
   RegisteredPrinter,
@@ -65,6 +66,19 @@ export class ApiClient {
       body.lastError = lastError;
     }
     return this.request<PrintJob>('PATCH', `/agent/print-jobs/${jobId}`, body);
+  }
+
+  async updatePrinterStatuses(statuses: PrinterStatusReport[]): Promise<void> {
+    await this.request('POST', '/agent/printers/status', {
+      agentId: this.config.agentId,
+      printers: statuses,
+    });
+  }
+
+  async reportDisconnect(): Promise<void> {
+    await this.request('POST', '/agent/disconnect', {
+      agentId: this.config.agentId,
+    });
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {

@@ -90,6 +90,11 @@ export interface RegisteredPrinter {
   lastSeenAt: string | null;
 }
 
+export interface PrinterStatusReport {
+  deviceName: string;
+  isOnline: boolean;
+}
+
 export interface PrintJobCreatedEvent {
   jobId: string;
   printerId: string;
