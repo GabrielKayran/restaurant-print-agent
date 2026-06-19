@@ -93,7 +93,7 @@ export class JobProcessor {
         }
 
         showJobPrinted(jobId, printer.deviceName);
-        log(`Job ${jobId} printed on ${printer.deviceName}`);
+        log(`Job ${jobId} impresso em ${printer.deviceName}`);
         await this.apiClient.updateJobStatus(jobId, 'COMPLETED');
         return;
       } catch (error) {
@@ -104,10 +104,10 @@ export class JobProcessor {
           await sleep(RETRY_DELAY_MS);
         } else {
           showJobFailed(jobId, msg);
-          logError(`Job ${jobId} failed after ${MAX_LOCAL_RETRIES} attempts`);
+          logError(`Job ${jobId} falhou apos ${MAX_LOCAL_RETRIES} tentativas`);
           await this.apiClient
-            .updateJobStatus(jobId, 'FAILED', `Print failed: ${msg}`)
-            .catch((e) => logError('Failed to update job status', e));
+            .updateJobStatus(jobId, 'FAILED', `Falha na impressao: ${msg}`)
+            .catch((e) => logError('Falha ao atualizar status do job', e));
         }
       }
     }
@@ -128,7 +128,7 @@ export class JobProcessor {
       case 'TEST_PAGE':
         return buildTestPage(payload as unknown as TestPagePayload, paperWidth);
       default:
-        throw new Error(`Unknown job type: ${type}`);
+        throw new Error(`Tipo de job desconhecido: ${type}`);
     }
   }
 

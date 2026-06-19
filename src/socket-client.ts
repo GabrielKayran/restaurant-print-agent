@@ -39,25 +39,25 @@ export class SocketClient {
     });
 
     this.socket.on('connect', () => {
-      log('WebSocket connected');
+      log('WebSocket conectado');
       this._connected = true;
       showConnected();
       this.callbacks.onConnect();
     });
 
     this.socket.on('disconnect', (reason) => {
-      log(`WebSocket disconnected: ${reason}`);
+      log(`WebSocket desconectado: ${reason}`);
       this._connected = false;
       showDisconnected();
       this.callbacks.onDisconnect();
     });
 
     this.socket.on('connect_error', (error) => {
-      logError(`WebSocket connection error: ${error.message}`);
+      logError(`Erro de conexao WebSocket: ${error.message}`);
     });
 
     this.socket.on('print.job.created', (event: PrintJobCreatedEvent) => {
-      log(`Print job received: ${event.jobId} (${event.type})`);
+      log(`Job de impressao recebido: ${event.jobId} (${event.type})`);
       showJobReceived(event.jobId, event.type);
       this.callbacks.onJobCreated(event);
     });
@@ -109,7 +109,7 @@ export class ConnectionManager {
 
     showReconnected();
     this.onReconnect().catch((err) => {
-      logError('Failed to fetch pending jobs on reconnect', err);
+      logError('Falha ao buscar jobs pendentes ao reconectar', err);
     });
   }
 

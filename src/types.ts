@@ -6,7 +6,7 @@ export interface AgentConfig {
 
 export type PrintJobType = 'KITCHEN_TICKET' | 'EXPEDITION_TICKET' | 'RECEIPT' | 'TEST_PAGE';
 export type PrintJobStatus = 'PENDING' | 'PRINTING' | 'COMPLETED' | 'FAILED';
-export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER';
 export type PrinterType = 'THERMAL' | 'STANDARD';
 
 export interface PrintJob {

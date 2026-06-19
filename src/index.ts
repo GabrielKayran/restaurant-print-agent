@@ -71,7 +71,7 @@ async function main(): Promise<void> {
 
   showStep('Carregando configuracao...');
   const config = await loadConfig();
-  log(`Config loaded: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
+  log(`Config carregada: apiUrl=${config.apiUrl}, agentId=${config.agentId}`);
 
   showStep('Descobrindo impressoras...');
   const discovered = discoverPrinters();
@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   function enqueueJob(jobId: string): void {
     processingQueue = processingQueue
       .then(() => jobProcessor.processJob(jobId))
-      .catch((error) => logError(`Unexpected error processing job ${jobId}`, error));
+      .catch((error) => logError(`Erro inesperado ao processar job ${jobId}`, error));
   }
 
   showStep('Conectando ao servidor...');
