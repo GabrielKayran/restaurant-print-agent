@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline';
 import { ApiClient, AuthError } from './api-client.js';
 import { disableAutostart } from './autostart.js';
-import { loadConfig, reconfigureKey } from './config.js';
+import { clearCredentials, loadConfig, reconfigureKey } from './config.js';
 import { JobProcessor } from './job-processor.js';
 import { log, logError } from './logger.js';
 import { discoverPrinters } from './printer-discovery.js';
@@ -21,7 +21,7 @@ import {
 import { CURRENT_VERSION } from './version.js';
 import { checkForUpdates } from './version-check.js';
 
-function handleCliFlags(): boolean {
+async function handleCliFlags(): Promise<boolean> {
   const args = process.argv.slice(2);
 
   if (args.includes('--uninstall')) {
@@ -31,6 +31,7 @@ function handleCliFlags(): boolean {
     } else {
       console.log('Nao foi possivel remover o inicio automatico.');
     }
+    await clearCredentials();
     return true;
   }
 
@@ -62,7 +63,7 @@ async function authenticateAndRegister(
 }
 
 async function main(): Promise<void> {
-  if (handleCliFlags()) {
+  if (await handleCliFlags()) {
     process.exit(0);
   }
 
