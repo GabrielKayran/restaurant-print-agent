@@ -142,11 +142,6 @@ export class JobProcessor {
       },
     });
 
-    const isConnected = await printer.isPrinterConnected();
-    if (!isConnected) {
-      throw new Error(`Impressora "${deviceName}" nao esta conectada`);
-    }
-
     printer.raw(buffer);
     await printer.execute();
   }
