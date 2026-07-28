@@ -1,0 +1,34 @@
+appId: br.dev.kayran.print-agent
+productName: RestaurantOS Print Agent
+extraMetadata:
+  main: dist-electron/main.cjs
+directories:
+  buildResources: assets
+  output: build
+publish:
+  provider: github
+  owner: GabrielKayran
+  repo: restaurant-print-agent
+files:
+  - dist-electron/**
+  - assets/**
+  - package.json
+  - node_modules/electron-updater/**
+  - node_modules/keytar/**
+  - node_modules/node-thermal-printer/**
+  - node_modules/socket.io-client/**
+  - node_modules/engine.io-client/**
+  - node_modules/@socket.io/**
+asarUnpack:
+  - node_modules/keytar/**
+win:
+  target: nsis
+  icon: assets/icon.png
+  artifactName: print-agent-setup.exe
+  signAndEditExecutable: false
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  shortcutName: RestaurantOS Print Agent

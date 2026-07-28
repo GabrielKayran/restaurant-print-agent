@@ -1,15 +1,8 @@
 import { EscPosBuilder } from '../escpos/builder.js';
 import type { PrintPayload } from '../types.js';
-import {
-  formatCurrency,
-  formatTime,
-  orderTypeLabel,
-} from './format-utils.js';
+import { formatCurrency, formatTime, groupItemsByGuest, orderTypeLabel } from './format-utils.js';
 
-export function buildExpeditionTicket(
-  payload: PrintPayload,
-  paperWidth: number,
-): Buffer {
+export function buildExpeditionTicket(payload: PrintPayload, paperWidth: number): Buffer {
   const b = new EscPosBuilder(paperWidth);
 
   // Header
@@ -63,24 +56,65 @@ export function buildExpeditionTicket(
 
   b.line();
 
-  // Items with prices
-  for (const item of payload.items) {
-    const itemName = item.variantName
-      ? `${item.name} (${item.variantName})`
-      : item.name;
-    const qty = `${item.quantity}x ${itemName}`;
-    b.pair(qty, formatCurrency(item.totalPrice));
+  // Items — grouped by guest when any item has a guestName
+  const groups = groupItemsByGuest(payload.items);
 
-    for (const option of item.options) {
-      if (option.price > 0) {
-        b.pair(`   > ${option.name}`, formatCurrency(option.price));
-      } else {
-        b.text(`   > ${option.name}`);
+  if (groups) {
+    for (let gi = 0; gi < groups.length; gi++) {
+      const group = groups[gi];
+
+      if (group.guestName !== null) {
+        b.bold(`=== ${group.guestName.toUpperCase()} ===`);
+      } else if (groups.length > 1) {
+        b.bold('=== GERAL ===');
+      }
+
+      let groupSubtotal = 0;
+
+      for (const item of group.items) {
+        const itemName = item.variantName ? `${item.name} (${item.variantName})` : item.name;
+        const qty = `${item.quantity}x ${itemName}`;
+        b.pair(qty, formatCurrency(item.totalPrice));
+        groupSubtotal += item.totalPrice;
+
+        for (const option of item.options) {
+          if (option.price > 0) {
+            b.pair(`   > ${option.name}`, formatCurrency(option.price));
+          } else {
+            b.text(`   > ${option.name}`);
+          }
+        }
+
+        if (item.notes) {
+          b.text(`   * ${item.notes}`);
+        }
+      }
+
+      if (group.guestName !== null) {
+        b.pair(`Subtotal ${group.guestName}:`, formatCurrency(groupSubtotal));
+      }
+
+      if (gi < groups.length - 1) {
+        b.newline();
       }
     }
+  } else {
+    for (const item of payload.items) {
+      const itemName = item.variantName ? `${item.name} (${item.variantName})` : item.name;
+      const qty = `${item.quantity}x ${itemName}`;
+      b.pair(qty, formatCurrency(item.totalPrice));
 
-    if (item.notes) {
-      b.text(`   * ${item.notes}`);
+      for (const option of item.options) {
+        if (option.price > 0) {
+          b.pair(`   > ${option.name}`, formatCurrency(option.price));
+        } else {
+          b.text(`   > ${option.name}`);
+        }
+      }
+
+      if (item.notes) {
+        b.text(`   * ${item.notes}`);
+      }
     }
   }
 

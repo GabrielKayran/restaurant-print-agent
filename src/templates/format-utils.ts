@@ -1,3 +1,38 @@
+import type { PrintPayloadItem } from '../types.js';
+
+export interface PrintItemGroup {
+  guestId: string | null;
+  guestName: string | null;
+  items: PrintPayloadItem[];
+}
+
+/**
+ * Returns items grouped by guestId when at least one item has a guestName,
+ * or null when no item has a guestName (flat rendering unchanged).
+ * Named groups appear first (in insertion order); GERAL (null guestId) is last.
+ */
+export function groupItemsByGuest(items: PrintPayloadItem[]): PrintItemGroup[] | null {
+  if (!items.some((i) => i.guestName)) return null;
+
+  const groupMap = new Map<string | null, PrintItemGroup>();
+
+  for (const item of items) {
+    const key = item.guestId;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { guestId: key, guestName: item.guestName, items: [] });
+    }
+    groupMap.get(key)!.items.push(item);
+  }
+
+  const result: PrintItemGroup[] = [];
+  for (const [key, group] of groupMap) {
+    if (key !== null) result.push(group);
+  }
+  if (groupMap.has(null)) result.push(groupMap.get(null)!);
+
+  return result;
+}
+
 export function formatCurrency(value: number): string {
   return `R$${value.toFixed(2).replace('.', ',')}`;
 }

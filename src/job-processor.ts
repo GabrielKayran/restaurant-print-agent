@@ -1,4 +1,8 @@
-import ThermalPrinter, { PrinterTypes } from 'node-thermal-printer';
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir, platform } from 'node:os';
+import { join } from 'node:path';
 import { ApiClient } from './api-client.js';
 import { log, logError, logWarn } from './logger.js';
 import { showJobFailed, showJobPrinted } from './ui.js';
@@ -133,16 +137,93 @@ export class JobProcessor {
   }
 
   private async sendToPrinter(deviceName: string, buffer: Buffer): Promise<void> {
-    const printer = new ThermalPrinter.printer({
-      type: PrinterTypes.EPSON,
-      interface: deviceName,
-      removeSpecialCharacters: false,
-      options: {
-        timeout: 10_000,
-      },
-    });
+    if (platform() === 'win32') {
+      await this.sendToPrinterWindows(deviceName, buffer);
+    } else {
+      await this.sendToPrinterLinux(deviceName, buffer);
+    }
+  }
 
-    printer.raw(buffer);
-    await printer.execute();
+  // Uses winspool.drv via PowerShell — the correct way to send raw bytes to a
+  // Windows printer by name without requiring printer sharing or port access.
+  private async sendToPrinterWindows(deviceName: string, buffer: Buffer): Promise<void> {
+    const tmpFile = join(tmpdir(), `print-${randomUUID()}.bin`);
+    try {
+      writeFileSync(tmpFile, buffer);
+
+      const escapedFile = tmpFile.replace(/\\/g, '\\\\');
+      const escapedPrinter = deviceName.replace(/'/g, "''");
+
+      const script = `
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class RawPrint {
+    [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+    public struct DOCINFOA { public string pDocName; public string pOutputFile; public string pDataType; }
+    [DllImport("winspool.Drv", SetLastError=true, CharSet=CharSet.Ansi)]
+    public static extern bool OpenPrinter(string name, out IntPtr hPrinter, IntPtr defaults);
+    [DllImport("winspool.Drv", SetLastError=true)]
+    public static extern bool ClosePrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", SetLastError=true)]
+    public static extern int StartDocPrinter(IntPtr hPrinter, int level, ref DOCINFOA info);
+    [DllImport("winspool.Drv", SetLastError=true)]
+    public static extern bool EndDocPrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", SetLastError=true)]
+    public static extern bool StartPagePrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", SetLastError=true)]
+    public static extern bool EndPagePrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", SetLastError=true)]
+    public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int count, out int written);
+    public static void Send(string printerName, byte[] bytes) {
+        IntPtr hPrinter;
+        if (!OpenPrinter(printerName, out hPrinter, IntPtr.Zero))
+            throw new Exception("OpenPrinter falhou: " + Marshal.GetLastWin32Error());
+        try {
+            var di = new DOCINFOA { pDocName = "ESC/POS", pOutputFile = null, pDataType = "RAW" };
+            if (StartDocPrinter(hPrinter, 1, ref di) == 0)
+                throw new Exception("StartDocPrinter falhou: " + Marshal.GetLastWin32Error());
+            if (!StartPagePrinter(hPrinter))
+                throw new Exception("StartPagePrinter falhou: " + Marshal.GetLastWin32Error());
+            IntPtr ptr = Marshal.AllocCoTaskMem(bytes.Length);
+            try {
+                Marshal.Copy(bytes, 0, ptr, bytes.Length);
+                int written;
+                if (!WritePrinter(hPrinter, ptr, bytes.Length, out written))
+                    throw new Exception("WritePrinter falhou: " + Marshal.GetLastWin32Error());
+            } finally { Marshal.FreeCoTaskMem(ptr); }
+            EndPagePrinter(hPrinter);
+            EndDocPrinter(hPrinter);
+        } finally { ClosePrinter(hPrinter); }
+    }
+}
+'@
+$bytes = [System.IO.File]::ReadAllBytes('${escapedFile}')
+[RawPrint]::Send('${escapedPrinter}', $bytes)
+`.trim();
+
+      const encoded = Buffer.from(script, 'utf16le').toString('base64');
+      execSync(`powershell -NoProfile -EncodedCommand ${encoded}`, { timeout: 15_000 });
+    } finally {
+      try {
+        unlinkSync(tmpFile);
+      } catch {
+        /* best-effort cleanup */
+      }
+    }
+  }
+
+  private async sendToPrinterLinux(deviceName: string, buffer: Buffer): Promise<void> {
+    const tmpFile = join(tmpdir(), `print-${randomUUID()}.bin`);
+    try {
+      writeFileSync(tmpFile, buffer);
+      execSync(`lp -d "${deviceName}" -o raw "${tmpFile}"`, { timeout: 15_000 });
+    } finally {
+      try {
+        unlinkSync(tmpFile);
+      } catch {
+        /* best-effort cleanup */
+      }
+    }
   }
 }

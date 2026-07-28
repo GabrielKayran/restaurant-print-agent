@@ -68,6 +68,8 @@ export interface PrintPayloadItem {
   notes: string | null;
   options: { name: string; price: number }[];
   categoryName: string | null;
+  guestId: string | null;
+  guestName: string | null;
 }
 
 export interface PaymentInfo {

@@ -1,0 +1,103 @@
+import { app, Notification } from 'electron';
+import { autoUpdater } from 'electron-updater';
+import { logError, log } from '../src/logger.js';
+import { AgentService } from './agent-service.js';
+import { registerIpcHandlers, setupStatusForwarding } from './ipc-handlers.js';
+import { createTray, updateTrayTooltip } from './tray.js';
+import { createWindow, getWindow } from './window.js';
+
+// Extend app with custom property for quit handling
+declare module 'electron' {
+  interface App {
+    isQuitting: boolean;
+  }
+}
+app.isQuitting = false;
+app.setName('RestaurantOS Print Agent');
+
+// Single instance lock
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+}
+
+app.on('second-instance', () => {
+  const win = getWindow();
+  if (win) {
+    win.show();
+    win.focus();
+  }
+});
+
+app.whenReady().then(() => {
+  const agentService = new AgentService();
+
+  const win = createWindow();
+  createTray();
+  registerIpcHandlers(agentService);
+  setupStatusForwarding(agentService, getWindow);
+
+  // Show window once content is ready
+  win.once('ready-to-show', () => {
+    win.show();
+  });
+
+  // Update tray tooltip based on status
+  agentService.on('status', (status) => {
+    const tooltipMap: Record<string, string> = {
+      setup: 'Configuração pendente',
+      connecting: 'Conectando...',
+      connected: 'Conectado',
+      disconnected: 'Desconectado',
+      reconnecting: 'Reconectando...',
+      error: 'Erro',
+    };
+    updateTrayTooltip(tooltipMap[status.phase] || status.phase);
+  });
+
+  // Start agent in background — non-blocking
+  agentService.start().catch((err) => {
+    logError('Failed to start agent service', err);
+  });
+
+  // Auto-update: check silently, notify user when ready to install
+  if (app.isPackaged) {
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('update-downloaded', () => {
+      log('Update downloaded — will install on next quit');
+      updateTrayTooltip('Atualização disponível — reinicie para instalar');
+      if (Notification.isSupported()) {
+        new Notification({
+          title: 'RestaurantOS Print Agent — Atualização disponível',
+          body: 'Uma nova versão foi baixada. Feche o agente para instalar.',
+        }).show();
+      }
+    });
+
+    autoUpdater.on('error', (err) => {
+      logError('Auto-update error', err);
+    });
+
+    autoUpdater.checkForUpdates().catch((err) => {
+      logError('Failed to check for updates', err);
+    });
+  }
+});
+
+app.on('before-quit', () => {
+  app.isQuitting = true;
+});
+
+app.on('window-all-closed', () => {
+  // Do not quit — tray keeps the app alive
+});
+
+process.on('uncaughtException', (error) => {
+  logError('Uncaught exception in main process', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logError('Unhandled rejection in main process', reason);
+});

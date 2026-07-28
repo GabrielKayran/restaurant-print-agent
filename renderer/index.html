@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RestaurantOS Print Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ========== SETUP VIEW ========== -->
+  <div id="view-setup" class="view" data-view="setup">
+    <div class="setup-container">
+      <div class="setup-bg"></div>
+      <div class="setup-content">
+        <div class="brand-badge">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+        </div>
+        <h1 class="setup-title">RestaurantOS Print Agent</h1>
+        <p class="setup-subtitle">Conecte o agente ao seu restaurante.</p>
+
+        <div class="input-group">
+          <input type="text" id="setup-key" class="input" placeholder="Chave de integração..." autocomplete="off" spellcheck="false" aria-label="Chave de integração">
+          <p class="input-help">Cole a chave encontrada em Configurações &gt; Impressão no painel do restaurante.</p>
+        </div>
+
+        <button id="btn-setup" class="btn btn-primary btn-full">Conectar</button>
+
+        <div id="setup-error" class="error-banner" hidden>
+          <span class="error-icon">!</span>
+          <span id="setup-error-text"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DASHBOARD VIEW ========== -->
+  <div id="view-dashboard" class="view" data-view="dashboard">
+    <div class="dashboard-container">
+      <!-- Header -->
+      <div class="dashboard-header">
+        <div class="header-left">
+          <span class="header-title">RestaurantOS Print Agent</span>
+        </div>
+        <div class="header-actions">
+          <button id="btn-settings" class="btn-icon" title="Configurações">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Status banner -->
+      <div class="status-banner" id="status-banner">
+        <div class="status-row">
+          <span class="status-badge" id="status-badge">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">Conectando...</span>
+          </span>
+          <span class="version-label" id="version-label">v0.0.0</span>
+        </div>
+        <div class="unit-name" id="unit-name">Conectando...</div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="section-label">Métricas</div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value" id="metric-jobs">0</div>
+          <div class="metric-label">Jobs hoje</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="metric-printers">0</div>
+          <div class="metric-label">Impressoras</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="metric-last-job">—</div>
+          <div class="metric-label">Último job</div>
+        </div>
+      </div>
+
+      <!-- Printers -->
+      <div class="section-label">Impressoras</div>
+      <div id="printers-list" class="printers-list">
+        <div class="empty-state">Nenhuma impressora detectada</div>
+      </div>
+
+      <!-- Recent jobs -->
+      <div class="section-label">Últimas impressões</div>
+      <div id="jobs-feed" class="jobs-feed">
+        <div class="empty-state">Nenhuma impressão ainda</div>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="dashboard-footer">
+        <button id="btn-test-print" class="btn btn-outlined">Imprimir Teste</button>
+        <button id="btn-open-settings" class="btn btn-outlined">Configurações</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SETTINGS VIEW ========== -->
+  <div id="view-settings" class="view" data-view="settings">
+    <div class="settings-container">
+      <div class="settings-header">
+        <button id="btn-back" class="btn-icon" title="Voltar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
+        <span class="settings-title">Configurações</span>
+      </div>
+
+      <div class="settings-body">
+        <!-- Key -->
+        <div class="settings-section">
+          <label class="settings-label">Chave de integração</label>
+          <div class="key-display">
+            <span id="settings-key-masked" class="key-masked">••••••••••••••••</span>
+            <button id="btn-edit-key" class="btn btn-small btn-outlined">Editar</button>
+          </div>
+          <div id="key-edit-group" class="key-edit-group" hidden>
+            <input type="text" id="settings-key-input" class="input" placeholder="Nova chave de integração..." autocomplete="off" spellcheck="false" aria-label="Nova chave de integração">
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Autostart -->
+        <div class="settings-section">
+          <label class="toggle-row">
+            <input type="checkbox" id="settings-autostart" class="toggle-input">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Iniciar com o Windows</span>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Info -->
+        <div class="settings-section">
+          <div class="section-label">Informações</div>
+          <div class="info-row">
+            <span class="info-label">Versão instalada</span>
+            <span class="info-value" id="settings-version">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Agent ID</span>
+            <span class="info-value mono" id="settings-agent-id">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Servidor</span>
+            <span class="info-value mono" id="settings-api-url">—</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Actions -->
+        <button id="btn-save-settings" class="btn btn-primary btn-full">Salvar configurações</button>
+
+        <button id="btn-clear" class="btn btn-danger btn-full">Desconectar e limpar dados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test print modal -->
+  <div id="test-print-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-title">Imprimir página de teste</div>
+      <div id="test-printer-list" class="test-printer-list"></div>
+      <div class="modal-actions">
+        <button id="btn-cancel-test" class="btn btn-outlined">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm clear modal -->
+  <div id="confirm-clear-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-title">Desconectar agente?</div>
+      <p class="modal-text">Isso irá remover a chave de integração e desconectar o agente. Você precisará reconfigurar para voltar a imprimir.</p>
+      <div class="modal-actions">
+        <button id="btn-cancel-clear" class="btn btn-outlined">Cancelar</button>
+        <button id="btn-confirm-clear" class="btn btn-danger">Desconectar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

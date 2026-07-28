@@ -40,23 +40,22 @@ jobs:
       - name: Inject version from tag
         run: node scripts/inject-version.js ${{ needs.tag.outputs.new_tag }}
 
-      - name: Build TypeScript
-        run: npm run build
-
       - name: Run tests
         run: npm test
 
-      - name: Bundle with esbuild
-        run: npm run bundle
+      - name: Build Electron app
+        run: npm run electron:build
 
-      - name: Package executable
-        run: npx @yao-pkg/pkg dist/bundle.cjs --targets node20-win-x64 --output build/print-agent.exe --config package.json
+      - name: Package installer (NSIS)
+        run: npm run electron:dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.tag.outputs.new_tag }}
-          files: build/print-agent.exe
+          files: build/print-agent-setup.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

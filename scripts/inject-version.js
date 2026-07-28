@@ -28,3 +28,12 @@ export const CURRENT_VERSION: string = '${version}';
 
 writeFileSync(versionFile, content, 'utf-8');
 console.log(`Injected version: ${version}`);
+
+// Also update package.json so electron-builder picks up the correct version
+const pkgPath = join(root, 'package.json');
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+if (pkg.version !== version) {
+  pkg.version = version;
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+  console.log(`Updated package.json version to: ${version}`);
+}
