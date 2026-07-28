@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification, app } from 'electron';
+import { BrowserWindow, Notification, app, nativeImage } from 'electron';
 import * as path from 'node:path';
 
 let mainWindow: BrowserWindow | null = null;
@@ -10,7 +10,7 @@ export function createWindow(): BrowserWindow {
     height: 640,
     resizable: false,
     title: 'RestaurantOS Print Agent',
-    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
+    icon: nativeImage.createFromPath(path.join(app.getAppPath(), 'assets', 'icon.png')),
     backgroundColor: '#0a0d14',
     show: false,
     webPreferences: {

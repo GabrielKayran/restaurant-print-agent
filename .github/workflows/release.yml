@@ -55,7 +55,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.tag.outputs.new_tag }}
-          files: build/print-agent-setup.exe
+          files: |
+            build/print-agent-setup.exe
+            build/latest.yml
+            build/print-agent-setup.exe.blockmap
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

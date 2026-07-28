@@ -5,8 +5,7 @@ import { showWindow } from './window.js';
 let tray: Tray | null = null;
 
 function createTrayIcon(): Electron.NativeImage {
-  // Use the main app icon resized to 16x16 — more reliable than a separate tray asset
-  const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
+  const iconPath = path.join(app.getAppPath(), 'assets', 'icon.png');
   const fromFile = nativeImage.createFromPath(iconPath);
   if (!fromFile.isEmpty()) {
     return fromFile.resize({ width: 16, height: 16 });

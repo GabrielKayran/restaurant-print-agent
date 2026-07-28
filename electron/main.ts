@@ -77,18 +77,25 @@ app.whenReady().then(() => {
     logError('Failed to start agent service', err);
   });
 
-  // Auto-update: check silently, notify user when ready to install
+  // Auto-update: check silently, notify in tray + renderer when ready
   if (app.isPackaged) {
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 
-    autoUpdater.on('update-downloaded', () => {
-      log('Update downloaded — will install on next quit');
-      updateTrayTooltip('Atualização disponível — reinicie para instalar');
+    autoUpdater.on('update-available', (info) => {
+      log(`Update available: v${info.version} — downloading in background`);
+      updateTrayTooltip(`Baixando atualização v${info.version}...`);
+      getWindow()?.webContents.send('update:available', info.version);
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      log(`Update v${info.version} downloaded — will install on next quit`);
+      updateTrayTooltip('Atualização pronta — reinicie para instalar');
+      getWindow()?.webContents.send('update:downloaded', info.version);
       if (Notification.isSupported()) {
         new Notification({
-          title: 'RestaurantOS Print Agent — Atualização disponível',
-          body: 'Uma nova versão foi baixada. Feche o agente para instalar.',
+          title: 'RestaurantOS Print Agent — Atualização pronta',
+          body: `Versão ${info.version} baixada. Feche o agente para instalar.`,
         }).show();
       }
     });

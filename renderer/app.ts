@@ -12,6 +12,8 @@ interface AgentAPI {
   onStatusUpdate(cb: (data: AgentStatus) => void): void;
   onJobPrinted(cb: (data: JobEvent) => void): void;
   onJobFailed(cb: (data: JobFailedEvent) => void): void;
+  onUpdateAvailable(cb: (version: string) => void): void;
+  onUpdateDownloaded(cb: (version: string) => void): void;
 }
 
 interface AgentStatus {
@@ -368,6 +370,19 @@ function initEventListeners(): void {
     });
     if (recentJobs.length > MAX_RECENT_JOBS) recentJobs.pop();
     renderJobsFeed();
+  });
+
+  const updateBanner = document.getElementById('update-banner')!;
+  const updateBannerText = document.getElementById('update-banner-text')!;
+
+  window.agent.onUpdateAvailable((version: string) => {
+    updateBannerText.textContent = `⬇ Baixando atualização v${version}...`;
+    updateBanner.hidden = false;
+  });
+
+  window.agent.onUpdateDownloaded((version: string) => {
+    updateBannerText.textContent = `✓ Atualização v${version} pronta — feche o agente para instalar.`;
+    updateBanner.hidden = false;
   });
 }
 

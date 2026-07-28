@@ -19,4 +19,8 @@ contextBridge.exposeInMainWorld('agent', {
     ipcRenderer.on('job:printed', (_event, data) => cb(data)),
   onJobFailed: (cb: (data: unknown) => void) =>
     ipcRenderer.on('job:failed', (_event, data) => cb(data)),
+  onUpdateAvailable: (cb: (version: string) => void) =>
+    ipcRenderer.on('update:available', (_event, version) => cb(version)),
+  onUpdateDownloaded: (cb: (version: string) => void) =>
+    ipcRenderer.on('update:downloaded', (_event, version) => cb(version)),
 });
