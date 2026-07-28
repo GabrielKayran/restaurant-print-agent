@@ -3,11 +3,14 @@ import { JobProcessor } from '../src/job-processor.js';
 import type { ApiClient } from '../src/api-client.js';
 import type { PrintJob, RegisteredPrinter } from '../src/types.js';
 
+vi.mock('node:child_process', () => ({ execSync: vi.fn() }));
+
 function makePrinter(overrides: Partial<RegisteredPrinter> = {}): RegisteredPrinter {
   return {
     id: 'printer-1',
     unitId: 'unit-1',
     name: 'Cozinha',
+    printerType: "STANDARD",
     deviceName: 'EPSON_TM20',
     agentId: 'agent-1',
     paperWidth: 80,
@@ -40,6 +43,8 @@ function makeJob(overrides: Partial<PrintJob> = {}): PrintJob {
           name: 'X-Burger',
           variantName: null,
           quantity: 1,
+          guestName: null,
+          guestId: null,
           unitPrice: 25,
           totalPrice: 25,
           notes: null,
