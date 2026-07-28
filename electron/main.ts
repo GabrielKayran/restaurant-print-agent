@@ -1,4 +1,6 @@
 import { app, Notification } from 'electron';
+import { existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import { logError, log } from '../src/logger.js';
 import { AgentService } from './agent-service.js';
@@ -14,6 +16,9 @@ declare module 'electron' {
 }
 app.isQuitting = false;
 app.setName('RestaurantOS Print Agent');
+
+// Point config.ts to the writable userData directory (never inside the ASAR)
+process.env.AGENT_DATA_DIR = app.getPath('userData');
 
 // Single instance lock
 const gotLock = app.requestSingleInstanceLock();
@@ -54,6 +59,18 @@ app.whenReady().then(() => {
     };
     updateTrayTooltip(tooltipMap[status.phase] || status.phase);
   });
+
+  // Enable autostart by default on first launch
+  const autostartSentinel = join(app.getPath('userData'), '.autostart-initialized');
+  if (!existsSync(autostartSentinel)) {
+    app.setLoginItemSettings({ openAtLogin: true });
+    try {
+      writeFileSync(autostartSentinel, '1');
+    } catch {
+      // non-critical
+    }
+    log('Autostart enabled by default on first launch');
+  }
 
   // Start agent in background — non-blocking
   agentService.start().catch((err) => {

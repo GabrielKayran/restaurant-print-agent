@@ -31,6 +31,9 @@ interface PersistedData {
 }
 
 function getDataDir(): string {
+  // Electron sets this env var to app.getPath('userData') before AgentService starts
+  if (process.env.AGENT_DATA_DIR) return process.env.AGENT_DATA_DIR;
+  // CLI pkg build: store next to the executable
   const isPackaged = !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
   if (isPackaged) return dirname(process.execPath);
   try {
@@ -42,6 +45,9 @@ function getDataDir(): string {
 
 function getDataPath(): string {
   const dir = getDataDir();
+  // When AGENT_DATA_DIR or pkg: file sits directly in the dir.
+  // In the legacy dev fallback (import.meta.url in src/), step up one level.
+  if (process.env.AGENT_DATA_DIR) return join(dir, 'agent-data.json');
   const isPackaged = !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
   return join(dir, isPackaged ? '.agent-data.json' : '../.agent-data.json');
 }

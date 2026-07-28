@@ -5,22 +5,21 @@ import { showWindow } from './window.js';
 let tray: Tray | null = null;
 
 function createTrayIcon(): Electron.NativeImage {
-  // Try loading from assets first
-  const iconPath = path.join(__dirname, '..', 'assets', 'tray-icon.png');
+  // Use the main app icon resized to 16x16 — more reliable than a separate tray asset
+  const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
   const fromFile = nativeImage.createFromPath(iconPath);
   if (!fromFile.isEmpty()) {
-    return fromFile;
+    return fromFile.resize({ width: 16, height: 16 });
   }
 
   // Fallback: generate a 16x16 teal square programmatically
   const size = 16;
   const canvas = Buffer.alloc(size * size * 4);
-  // RGBA: teal #14b8a6
   for (let i = 0; i < size * size; i++) {
-    canvas[i * 4] = 0x14;     // R
-    canvas[i * 4 + 1] = 0xb8; // G
-    canvas[i * 4 + 2] = 0xa6; // B
-    canvas[i * 4 + 3] = 0xff; // A
+    canvas[i * 4] = 0x14;
+    canvas[i * 4 + 1] = 0xb8;
+    canvas[i * 4 + 2] = 0xa6;
+    canvas[i * 4 + 3] = 0xff;
   }
 
   return nativeImage.createFromBuffer(canvas, { width: size, height: size });
