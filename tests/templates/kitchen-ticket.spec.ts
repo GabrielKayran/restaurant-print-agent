@@ -95,6 +95,20 @@ describe('buildKitchenTicket', () => {
     expect(str).not.toContain('R$');
   });
 
+  it('prints items in double height', () => {
+    const str = buildKitchenTicket(makePayload(), 80).toString('latin1');
+    expect(str).toContain('\x1d\x21\x012x X-Bacon');
+  });
+
+  it('prints general notes in double height', () => {
+    const str = buildKitchenTicket(
+      makePayload({ generalNotes: 'Alergia a amendoim' }),
+      80,
+    ).toString('latin1');
+    const notesAt = str.indexOf('!! ALERGIA A AMENDOIM');
+    expect(str.lastIndexOf('\x1d\x21\x01', notesAt)).toBeGreaterThan(str.indexOf('Sem cebola'));
+  });
+
   it('works with 58mm paper', () => {
     const result = buildKitchenTicket(makePayload(), 58);
     expect(result.length).toBeGreaterThan(0);

@@ -64,6 +64,14 @@ export class EscPosBuilder {
     return this;
   }
 
+  // Double height, normal width — larger text that still fits lineWidth chars per line.
+  // Sent as raw GS ! 0x01 (low nibble = height) because the library's Epson
+  // setTextSize(height, width) writes height into the width nibble.
+  tallText(): this {
+    this.printer.raw(Buffer.from([0x1d, 0x21, 0x01]));
+    return this;
+  }
+
   resetFontSize(): this {
     this.printer.setTextNormal();
     return this;

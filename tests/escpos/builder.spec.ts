@@ -69,6 +69,12 @@ describe('EscPosBuilder', () => {
     expect(result).toBe(b);
   });
 
+  it('sets double height, normal width for tall text', () => {
+    const b = new EscPosBuilder(80);
+    b.tallText();
+    expect(b.build().includes(Buffer.from([0x1d, 0x21, 0x01]))).toBe(true);
+  });
+
   it('builds a buffer with raw data', () => {
     const b = new EscPosBuilder(80);
     b.raw(Buffer.from([0x1b, 0x40])); // ESC @ (initialize)
