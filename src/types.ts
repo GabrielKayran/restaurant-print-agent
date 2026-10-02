@@ -47,6 +47,10 @@ export interface PrintPayload {
   unitName: string;
   unitAddress: string | null;
   unitCnpj: string | null;
+  /** Comanda reemitida porque o pedido foi editado depois de ir para a cozinha. */
+  edited?: boolean;
+  /** O que mudou na edicao (ex.: "+ 2x Coca-Cola", "Retirada -> Entrega"). */
+  editChanges?: string[];
 }
 
 export interface DeliveryAddress {

@@ -1,5 +1,6 @@
 import { EscPosBuilder } from '../escpos/builder.js';
 import type { PrintPayload } from '../types.js';
+import { printEditBanner } from './edit-banner.js';
 import { formatCurrency, formatTime, groupItemsByGuest, orderTypeLabel } from './format-utils.js';
 
 export function buildExpeditionTicket(payload: PrintPayload, paperWidth: number): Buffer {
@@ -12,6 +13,7 @@ export function buildExpeditionTicket(payload: PrintPayload, paperWidth: number)
   b.resetFontSize();
   b.pair(orderTypeLabel(payload.orderType), `[${formatTime(payload.createdAt)}]`);
   b.line();
+  printEditBanner(b, payload);
 
   // Customer info
   b.alignLeft();

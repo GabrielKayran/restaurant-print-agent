@@ -52,6 +52,22 @@ describe('buildKitchenTicket', () => {
     expect(result.toString()).toContain('PEDIDO #42');
   });
 
+  it('flags edited orders and lists the changes', () => {
+    const result = buildKitchenTicket(
+      makePayload({ edited: true, editChanges: ['+ 1x Coca-Cola', 'Retirada -> Entrega'] }),
+      80,
+    );
+    const str = result.toString();
+    expect(str).toContain('PEDIDO ALTERADO');
+    expect(str).toContain('+ 1x Coca-Cola');
+    expect(str).toContain('Retirada -> Entrega');
+  });
+
+  it('omits the edit banner on regular tickets', () => {
+    const result = buildKitchenTicket(makePayload(), 80);
+    expect(result.toString()).not.toContain('PEDIDO ALTERADO');
+  });
+
   it('includes table name for DINE_IN', () => {
     const result = buildKitchenTicket(makePayload(), 80);
     expect(result.toString()).toContain('Mesa 5');
