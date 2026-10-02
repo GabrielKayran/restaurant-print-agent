@@ -30,7 +30,7 @@ export function createTray(): Tray {
   tray = new Tray(icon);
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'RestaurantOS Print Agent', enabled: false },
+    { label: 'GKFood Print Agent', enabled: false },
     { type: 'separator' },
     {
       label: 'Abrir',
@@ -46,7 +46,7 @@ export function createTray(): Tray {
     },
   ]);
 
-  tray.setToolTip('RestaurantOS Print Agent');
+  tray.setToolTip('GKFood Print Agent');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
@@ -58,6 +58,6 @@ export function createTray(): Tray {
 
 export function updateTrayTooltip(status: string): void {
   if (tray) {
-    tray.setToolTip(`RestaurantOS Print Agent — ${status}`);
+    tray.setToolTip(`GKFood Print Agent — ${status}`);
   }
 }

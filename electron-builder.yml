@@ -1,4 +1,5 @@
 appId: br.dev.kayran.print-agent
+# productName mantido: define o nome do .exe, e o atalho de autostart aponta para ele.
 productName: RestaurantOS Print Agent
 extraMetadata:
   main: dist-electron/main.cjs
@@ -31,4 +32,4 @@ nsis:
   perMachine: false
   createDesktopShortcut: false
   createStartMenuShortcut: true
-  shortcutName: RestaurantOS Print Agent
+  shortcutName: GKFood Print Agent

@@ -15,6 +15,8 @@ declare module 'electron' {
   }
 }
 app.isQuitting = false;
+// Nome antigo mantido de propósito: define a pasta userData (config do agente).
+// Trocar faria agentes já instalados perderem a configuração após o auto-update.
 app.setName('RestaurantOS Print Agent');
 
 // Point config.ts to the writable userData directory (never inside the ASAR)
@@ -94,7 +96,7 @@ app.whenReady().then(() => {
       getWindow()?.webContents.send('update:downloaded', info.version);
       if (Notification.isSupported()) {
         new Notification({
-          title: 'RestaurantOS Print Agent — Atualização pronta',
+          title: 'GKFood Print Agent — Atualização pronta',
           body: `Versão ${info.version} baixada. Feche o agente para instalar.`,
         }).show();
       }

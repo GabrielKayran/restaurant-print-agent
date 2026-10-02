@@ -9,7 +9,7 @@ export function createWindow(): BrowserWindow {
     width: 420,
     height: 640,
     resizable: false,
-    title: 'RestaurantOS Print Agent',
+    title: 'GKFood Print Agent',
     icon: nativeImage.createFromPath(path.join(app.getAppPath(), 'assets', 'icon.png')),
     backgroundColor: '#0a0d14',
     show: false,
@@ -33,7 +33,7 @@ export function createWindow(): BrowserWindow {
         hiddenOnceNotified = true;
         if (Notification.isSupported()) {
           new Notification({
-            title: 'RestaurantOS Print Agent',
+            title: 'GKFood Print Agent',
             body: 'O agente continua rodando na bandeja do sistema.',
           }).show();
         }
