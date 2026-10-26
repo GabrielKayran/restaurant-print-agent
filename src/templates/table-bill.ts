@@ -62,6 +62,9 @@ export function buildTableBill(payload: TableBillPayload, paperWidth: number): B
       b.pair(`  ${feeLabel}:`, formatCurrency(section.serviceFee));
     }
     b.boldPair(`  Total ${section.title}:`, formatCurrency(section.total));
+    if (section.paid && section.paid > 0) {
+      b.pair('  Ja pago:', formatCurrency(section.paid));
+    }
     b.line();
   }
 
@@ -92,9 +95,20 @@ export function buildTableBill(payload: TableBillPayload, paperWidth: number): B
   b.boldPair('TOTAL:', formatCurrency(payload.total));
   b.resetFontSize();
 
+  if (payload.paid && payload.paid > 0) {
+    b.pair('Ja pago:', formatCurrency(payload.paid));
+    b.tallText();
+    b.boldPair('FALTA PAGAR:', formatCurrency(payload.remaining ?? 0));
+    b.resetFontSize();
+  }
+
   if (payload.splitAmounts && payload.splitAmounts.length > 1) {
     b.line();
-    b.bold(`Dividido por ${payload.splitAmounts.length}:`);
+    b.bold(
+      payload.paid && payload.paid > 0
+        ? `Restante dividido por ${payload.splitAmounts.length}:`
+        : `Dividido por ${payload.splitAmounts.length}:`,
+    );
     for (const row of describeSplit(payload.splitAmounts)) {
       b.text(`  ${row}`);
     }

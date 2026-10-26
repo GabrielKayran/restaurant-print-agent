@@ -118,6 +118,7 @@ export interface TableBillSection {
   sharedShare: number;
   serviceFee: number;
   total: number;
+  paid?: number;
 }
 
 export interface TableBillPayload {
@@ -138,6 +139,8 @@ export interface TableBillPayload {
   serviceFeePercent: number;
   serviceFee: number;
   total: number;
+  paid?: number;
+  remaining?: number;
   splitCount: number | null;
   splitAmounts: number[] | null;
 }

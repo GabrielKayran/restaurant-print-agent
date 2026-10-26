@@ -90,6 +90,24 @@ describe('buildTableBill', () => {
     expect(str).toContain('2x R$33,33');
   });
 
+  it('shows what was already paid and what is left', () => {
+    const str = buildTableBill(
+      makePayload({
+        paid: 38.5,
+        remaining: 60.5,
+        sections: makePayload().sections.map((section, index) =>
+          index === 0 ? { ...section, paid: 38.5 } : section,
+        ),
+        splitAmounts: [30.25, 30.25],
+      }),
+      80,
+    ).toString();
+    expect(str).toContain('Ja pago:');
+    expect(str).toContain('FALTA PAGAR:');
+    expect(str).toContain('R$60,50');
+    expect(str).toContain('Restante dividido por 2:');
+  });
+
   it('notes the shared part on a single person bill', () => {
     const str = buildTableBill(
       makePayload({ personOnly: true, sharedLines: [] }),
