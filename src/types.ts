@@ -4,7 +4,12 @@ export interface AgentConfig {
   agentId: string;
 }
 
-export type PrintJobType = 'KITCHEN_TICKET' | 'EXPEDITION_TICKET' | 'RECEIPT' | 'TEST_PAGE';
+export type PrintJobType =
+  | 'KITCHEN_TICKET'
+  | 'EXPEDITION_TICKET'
+  | 'RECEIPT'
+  | 'TEST_PAGE'
+  | 'TABLE_BILL';
 export type PrintJobStatus = 'PENDING' | 'PRINTING' | 'COMPLETED' | 'FAILED';
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'COUNTER';
 export type PrinterType = 'THERMAL' | 'STANDARD';
@@ -97,6 +102,44 @@ export interface RegisteredPrinter {
   paperWidth: number;
   isOnline: boolean;
   lastSeenAt: string | null;
+}
+
+export interface TableBillLine {
+  quantity: number;
+  name: string;
+  total: number;
+  options: string[];
+}
+
+export interface TableBillSection {
+  title: string;
+  lines: TableBillLine[];
+  itemsTotal: number;
+  sharedShare: number;
+  serviceFee: number;
+  total: number;
+}
+
+export interface TableBillPayload {
+  unitName: string;
+  unitAddress: string | null;
+  unitCnpj: string | null;
+  tableName: string;
+  openedAt: string;
+  printedAt: string;
+  guestCount: number | null;
+  personOnly: boolean;
+  sections: TableBillSection[];
+  sharedLines: TableBillLine[];
+  sharedTotal: number;
+  sharedSplitAmong: number;
+  subtotal: number;
+  discount: number;
+  serviceFeePercent: number;
+  serviceFee: number;
+  total: number;
+  splitCount: number | null;
+  splitAmounts: number[] | null;
 }
 
 export interface TestPagePayload {

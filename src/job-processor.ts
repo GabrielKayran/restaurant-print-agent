@@ -9,8 +9,15 @@ import { showJobFailed, showJobPrinted } from './ui.js';
 import { buildExpeditionTicket } from './templates/expedition-ticket.js';
 import { buildKitchenTicket } from './templates/kitchen-ticket.js';
 import { buildReceipt } from './templates/receipt.js';
+import { buildTableBill } from './templates/table-bill.js';
 import { buildTestPage } from './templates/test-page.js';
-import type { PrintJob, PrintJobType, RegisteredPrinter, TestPagePayload } from './types.js';
+import type {
+  PrintJob,
+  PrintJobType,
+  RegisteredPrinter,
+  TableBillPayload,
+  TestPagePayload,
+} from './types.js';
 
 const MAX_LOCAL_RETRIES = 3;
 const RETRY_DELAY_MS = 5_000;
