@@ -26,7 +26,6 @@ win:
   target: nsis
   icon: assets/icon.png
   artifactName: print-agent-setup.exe
-  signAndEditExecutable: false
 nsis:
   oneClick: true
   perMachine: false

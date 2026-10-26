@@ -1,5 +1,5 @@
-import { app, ipcMain, Notification } from 'electron';
-import { existsSync, writeFileSync } from 'node:fs';
+import { app, ipcMain, Notification, shell } from 'electron';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import { logError, log } from '../src/logger.js';
@@ -26,9 +26,56 @@ function installUpdate(): void {
   app.isQuitting = true;
   autoUpdater.quitAndInstall(true, true);
 }
+
+// Must match appId in electron-builder.yml so the taskbar, notifications and the installer shortcut share one identity.
+const APP_USER_MODEL_ID = 'br.dev.kayran.print-agent';
+const LEGACY_APP_USER_MODEL_ID = 'electron.app.Electron';
+const START_MENU_SHORTCUT = 'GKFood Print Agent.lnk';
+const LEGACY_START_MENU_SHORTCUT = 'Electron.lnk';
+
+// Agents up to v3.8 ran as "electron.app.Electron": the Start menu showed "Electron" and autostart used that name.
+function migrateWindowsIdentity(): void {
+  try {
+    const legacyAutostart = app
+      .getLoginItemSettings()
+      .launchItems.find((item) => item.name === LEGACY_APP_USER_MODEL_ID);
+    if (legacyAutostart) {
+      app.setLoginItemSettings({ openAtLogin: false, name: LEGACY_APP_USER_MODEL_ID });
+      app.setLoginItemSettings({ openAtLogin: legacyAutostart.enabled });
+      log('Migrated legacy autostart entry');
+    }
+  } catch (err) {
+    logError('Failed to migrate legacy autostart entry', err);
+  }
+
+  const startMenuDir = join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
+  const target = process.execPath;
+
+  try {
+    const legacyShortcut = join(startMenuDir, LEGACY_START_MENU_SHORTCUT);
+    if (
+      existsSync(legacyShortcut) &&
+      shell.readShortcutLink(legacyShortcut).target.toLowerCase() === target.toLowerCase()
+    ) {
+      unlinkSync(legacyShortcut);
+      log('Removed legacy "Electron" Start menu shortcut');
+    }
+
+    const shortcut = join(startMenuDir, START_MENU_SHORTCUT);
+    shell.writeShortcutLink(shortcut, existsSync(shortcut) ? 'update' : 'create', {
+      target,
+      appUserModelId: APP_USER_MODEL_ID,
+      description: 'GKFood Print Agent',
+    });
+  } catch (err) {
+    logError('Failed to fix Start menu shortcut', err);
+  }
+}
+
 // Nome antigo mantido de propósito: define a pasta userData (config do agente).
 // Trocar faria agentes já instalados perderem a configuração após o auto-update.
 app.setName('RestaurantOS Print Agent');
+app.setAppUserModelId(APP_USER_MODEL_ID);
 
 // Point config.ts to the writable userData directory (never inside the ASAR)
 process.env.AGENT_DATA_DIR = app.getPath('userData');
@@ -72,6 +119,10 @@ app.whenReady().then(() => {
     };
     updateTrayTooltip(tooltipMap[status.phase] || status.phase);
   });
+
+  if (app.isPackaged && process.platform === 'win32') {
+    migrateWindowsIdentity();
+  }
 
   // Enable autostart by default on first launch
   const autostartSentinel = join(app.getPath('userData'), '.autostart-initialized');
