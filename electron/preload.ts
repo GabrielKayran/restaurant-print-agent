@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('agent', {
   printTest: (deviceName: string) => ipcRenderer.invoke('print:test', deviceName),
   setAutostart: (enabled: boolean) => ipcRenderer.invoke('autostart:set', enabled),
   getAutostartEnabled: () => ipcRenderer.invoke('autostart:get'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
 
   // Main -> Renderer (on)
   onStatusUpdate: (cb: (data: unknown) => void) =>

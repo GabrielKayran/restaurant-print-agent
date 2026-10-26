@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { showWindow } from './window.js';
 
 let tray: Tray | null = null;
+let pendingUpdate: { version: string; install: () => void } | null = null;
 
 function createTrayIcon(): Electron.NativeImage {
   const iconPath = path.join(app.getAppPath(), 'assets', 'icon.png');
@@ -28,8 +29,28 @@ export function createTray(): Tray {
   const icon = createTrayIcon();
 
   tray = new Tray(icon);
+  tray.setToolTip('GKFood Print Agent');
+  tray.setContextMenu(buildMenu());
 
-  const contextMenu = Menu.buildFromTemplate([
+  tray.on('click', () => {
+    showWindow();
+  });
+
+  return tray;
+}
+
+function buildMenu(): Menu {
+  const updateItems: Electron.MenuItemConstructorOptions[] = pendingUpdate
+    ? [
+        {
+          label: `Atualizar agora (v${pendingUpdate.version})`,
+          click: () => pendingUpdate?.install(),
+        },
+        { type: 'separator' },
+      ]
+    : [];
+
+  return Menu.buildFromTemplate([
     { label: 'GKFood Print Agent', enabled: false },
     { type: 'separator' },
     {
@@ -37,6 +58,7 @@ export function createTray(): Tray {
       click: () => showWindow(),
     },
     { type: 'separator' },
+    ...updateItems,
     {
       label: 'Sair',
       click: () => {
@@ -45,15 +67,11 @@ export function createTray(): Tray {
       },
     },
   ]);
+}
 
-  tray.setToolTip('GKFood Print Agent');
-  tray.setContextMenu(contextMenu);
-
-  tray.on('click', () => {
-    showWindow();
-  });
-
-  return tray;
+export function setTrayUpdateReady(version: string, install: () => void): void {
+  pendingUpdate = { version, install };
+  tray?.setContextMenu(buildMenu());
 }
 
 export function updateTrayTooltip(status: string): void {

@@ -14,6 +14,7 @@ interface AgentAPI {
   onJobFailed(cb: (data: JobFailedEvent) => void): void;
   onUpdateAvailable(cb: (version: string) => void): void;
   onUpdateDownloaded(cb: (version: string) => void): void;
+  installUpdate(): Promise<void>;
 }
 
 interface AgentStatus {
@@ -374,6 +375,13 @@ function initEventListeners(): void {
 
   const updateBanner = document.getElementById('update-banner')!;
   const updateBannerText = document.getElementById('update-banner-text')!;
+  const updateInstallBtn = document.getElementById('update-install-btn') as HTMLButtonElement;
+
+  updateInstallBtn.addEventListener('click', () => {
+    updateInstallBtn.disabled = true;
+    updateInstallBtn.textContent = 'Reiniciando...';
+    window.agent.installUpdate();
+  });
 
   window.agent.onUpdateAvailable((version: string) => {
     updateBannerText.textContent = `⬇ Baixando atualização v${version}...`;
@@ -381,7 +389,8 @@ function initEventListeners(): void {
   });
 
   window.agent.onUpdateDownloaded((version: string) => {
-    updateBannerText.textContent = `✓ Atualização v${version} pronta — feche o agente para instalar.`;
+    updateBannerText.textContent = `✓ Atualização v${version} pronta — instala sozinha quando não houver impressões.`;
+    updateInstallBtn.hidden = false;
     updateBanner.hidden = false;
   });
 }

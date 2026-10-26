@@ -1,11 +1,11 @@
-import { app, Notification } from 'electron';
+import { app, ipcMain, Notification } from 'electron';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import { logError, log } from '../src/logger.js';
 import { AgentService } from './agent-service.js';
 import { registerIpcHandlers, setupStatusForwarding } from './ipc-handlers.js';
-import { createTray, updateTrayTooltip } from './tray.js';
+import { createTray, setTrayUpdateReady, updateTrayTooltip } from './tray.js';
 import { createWindow, getWindow } from './window.js';
 
 // Extend app with custom property for quit handling
@@ -15,6 +15,17 @@ declare module 'electron' {
   }
 }
 app.isQuitting = false;
+
+// Jobs left pending during the restart are fetched again on reconnect, so a short idle window is enough.
+const AUTO_INSTALL_IDLE_MS = 3 * 60 * 1000;
+const AUTO_INSTALL_CHECK_MS = 30 * 1000;
+const UPDATE_RECHECK_MS = 4 * 60 * 60 * 1000;
+
+function installUpdate(): void {
+  log('Installing downloaded update and restarting');
+  app.isQuitting = true;
+  autoUpdater.quitAndInstall(true, true);
+}
 // Nome antigo mantido de propósito: define a pasta userData (config do agente).
 // Trocar faria agentes já instalados perderem a configuração após o auto-update.
 app.setName('RestaurantOS Print Agent');
@@ -90,25 +101,41 @@ app.whenReady().then(() => {
       getWindow()?.webContents.send('update:available', info.version);
     });
 
+    let autoInstallTimer: NodeJS.Timeout | null = null;
+
     autoUpdater.on('update-downloaded', (info) => {
-      log(`Update v${info.version} downloaded — will install on next quit`);
-      updateTrayTooltip('Atualização pronta — reinicie para instalar');
+      log(`Update v${info.version} downloaded — installing when idle`);
+      updateTrayTooltip(`Atualização v${info.version} pronta — instala sozinha quando ocioso`);
+      setTrayUpdateReady(info.version, installUpdate);
       getWindow()?.webContents.send('update:downloaded', info.version);
       if (Notification.isSupported()) {
         new Notification({
           title: 'GKFood Print Agent — Atualização pronta',
-          body: `Versão ${info.version} baixada. Feche o agente para instalar.`,
+          body: `Versão ${info.version} será instalada automaticamente quando não houver impressões.`,
         }).show();
       }
+
+      if (autoInstallTimer) clearInterval(autoInstallTimer);
+      autoInstallTimer = setInterval(() => {
+        if (agentService.isIdleFor(AUTO_INSTALL_IDLE_MS)) {
+          if (autoInstallTimer) clearInterval(autoInstallTimer);
+          installUpdate();
+        }
+      }, AUTO_INSTALL_CHECK_MS);
     });
 
     autoUpdater.on('error', (err) => {
       logError('Auto-update error', err);
     });
 
-    autoUpdater.checkForUpdates().catch((err) => {
-      logError('Failed to check for updates', err);
-    });
+    ipcMain.handle('update:install', () => installUpdate());
+
+    const checkForUpdates = () =>
+      autoUpdater.checkForUpdates().catch((err) => {
+        logError('Failed to check for updates', err);
+      });
+    checkForUpdates();
+    setInterval(checkForUpdates, UPDATE_RECHECK_MS);
   }
 });
 

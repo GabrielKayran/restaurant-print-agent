@@ -41,6 +41,8 @@ export class AgentService extends EventEmitter {
   private healthMonitor: PrinterHealthMonitor | null = null;
 
   private processingQueue: Promise<void> = Promise.resolve();
+  private jobsInFlight = 0;
+  private lastActivityAt = Date.now();
 
   async start(): Promise<void> {
     const persisted = await readPersistedData();
@@ -172,6 +174,8 @@ export class AgentService extends EventEmitter {
   }
 
   private enqueueJob(jobId: string, type: string): void {
+    this.jobsInFlight++;
+    this.lastActivityAt = Date.now();
     this.processingQueue = this.processingQueue
       .then(async () => {
         await this.jobProcessor!.processJob(jobId);
@@ -195,7 +199,15 @@ export class AgentService extends EventEmitter {
           error: error instanceof Error ? error.message : String(error),
         };
         this.emit('job:failed', failedEvent);
+      })
+      .finally(() => {
+        this.jobsInFlight--;
+        this.lastActivityAt = Date.now();
       });
+  }
+
+  isIdleFor(ms: number): boolean {
+    return this.jobsInFlight === 0 && Date.now() - this.lastActivityAt >= ms;
   }
 
   async stop(): Promise<void> {
