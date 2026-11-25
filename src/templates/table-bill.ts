@@ -1,6 +1,6 @@
 import { EscPosBuilder } from '../escpos/builder.js';
 import type { TableBillLine, TableBillPayload } from '../types.js';
-import { formatCurrency, formatDateTime } from './format-utils.js';
+import { formatCurrency, formatDateTime, formatQuantity } from './format-utils.js';
 
 function formatPercent(value: number): string {
   return `${Number.isInteger(value) ? value : value.toFixed(2).replace('.', ',')}%`;
@@ -8,7 +8,7 @@ function formatPercent(value: number): string {
 
 function printLines(b: EscPosBuilder, lines: TableBillLine[]): void {
   for (const line of lines) {
-    b.pair(`${line.quantity}x ${line.name}`, formatCurrency(line.total));
+    b.pair(`${formatQuantity(line.quantity)}x ${line.name}`, formatCurrency(line.total));
     for (const option of line.options) {
       b.text(`   > ${option}`);
     }

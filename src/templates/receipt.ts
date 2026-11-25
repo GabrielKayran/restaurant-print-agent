@@ -1,6 +1,11 @@
 import { EscPosBuilder } from '../escpos/builder.js';
 import type { PrintPayload } from '../types.js';
-import { formatCurrency, formatDateTime } from './format-utils.js';
+import {
+  formatCurrency,
+  formatDateTime,
+  formatQuantity,
+  paymentMethodLabel,
+} from './format-utils.js';
 
 export function buildReceipt(
   payload: PrintPayload,
@@ -22,7 +27,12 @@ export function buildReceipt(
 
   b.line();
   b.bold('CUPOM NAO FISCAL');
-  b.pair(`Pedido #${payload.orderCode}`, formatDateTime(payload.createdAt));
+  if (payload.receiptTitle) {
+    b.text(payload.receiptTitle);
+    b.text(formatDateTime(payload.createdAt));
+  } else {
+    b.pair(`Pedido #${payload.orderCode}`, formatDateTime(payload.createdAt));
+  }
   b.line();
   b.alignLeft();
 
@@ -31,7 +41,7 @@ export function buildReceipt(
     const itemName = item.variantName
       ? `${item.name} (${item.variantName})`
       : item.name;
-    const qty = `${item.quantity}x ${itemName}`;
+    const qty = `${formatQuantity(item.quantity)}x ${itemName}`;
     b.pair(qty, formatCurrency(item.totalPrice));
 
     for (const option of item.options) {
@@ -53,13 +63,28 @@ export function buildReceipt(
   if (payload.discount > 0) {
     b.pair('Desconto:', `-${formatCurrency(payload.discount)}`);
   }
+  if (payload.serviceFee && payload.serviceFee > 0) {
+    const percent = payload.serviceFeePercent
+      ? ` (${String(payload.serviceFeePercent).replace('.', ',')}%)`
+      : '';
+    b.pair(`Servico${percent}:`, formatCurrency(payload.serviceFee));
+  }
   b.boldPair('TOTAL:', formatCurrency(payload.total));
 
   b.line();
 
   // Payments
   for (const payment of payload.payments) {
-    b.pair(`Pagamento: ${payment.method}`, formatCurrency(payment.amount));
+    b.pair(
+      `Pagamento: ${paymentMethodLabel(payment.method)}`,
+      formatCurrency(payment.amount),
+    );
+  }
+  if (payload.remaining !== undefined) {
+    b.boldPair(
+      payload.remaining > 0 ? 'Falta pagar:' : 'Conta quitada',
+      payload.remaining > 0 ? formatCurrency(payload.remaining) : '',
+    );
   }
 
   b.line();

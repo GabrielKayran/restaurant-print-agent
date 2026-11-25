@@ -101,7 +101,7 @@ describe('buildReceipt', () => {
 
   it('includes payment info', () => {
     const result = buildReceipt(makePayload(), 80);
-    expect(result.toString()).toContain('PIX');
+    expect(result.toString()).toContain('Pagamento: Pix');
   });
 
   it('includes thank you message', () => {
@@ -112,5 +112,31 @@ describe('buildReceipt', () => {
   it('works with 58mm paper', () => {
     const result = buildReceipt(makePayload(), 58);
     expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('prints a table payment with its title, service fee and what is left', () => {
+    const str = buildReceipt(
+      makePayload({
+        receiptTitle: 'Mesa 4 - Conta de Ana',
+        serviceFee: 2.5,
+        serviceFeePercent: 10,
+        total: 27.5,
+        remaining: 30,
+        payments: [{ method: 'CREDIT_CARD', amount: 27.5 }],
+      }),
+      80,
+    ).toString();
+
+    expect(str).toContain('Mesa 4 - Conta de Ana');
+    expect(str).not.toContain('Pedido #55');
+    expect(str).toContain('Servico (10%):');
+    expect(str).toContain('Pagamento: Credito');
+    expect(str).toContain('Falta pagar:');
+  });
+
+  it('says the bill is settled when nothing is left', () => {
+    const str = buildReceipt(makePayload({ remaining: 0 }), 80).toString();
+
+    expect(str).toContain('Conta quitada');
   });
 });

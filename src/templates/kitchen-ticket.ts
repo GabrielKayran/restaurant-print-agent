@@ -1,7 +1,7 @@
 import { EscPosBuilder } from '../escpos/builder.js';
 import type { PrintPayload, PrintPayloadItem } from '../types.js';
 import { printEditBanner } from './edit-banner.js';
-import { formatTime, groupItemsByGuest, orderTypeLabel } from './format-utils.js';
+import { formatQuantity, formatTime, groupItemsByGuest, orderTypeLabel } from './format-utils.js';
 
 export function buildKitchenTicket(payload: PrintPayload, paperWidth: number): Buffer {
   const b = new EscPosBuilder(paperWidth);
@@ -86,7 +86,7 @@ function printItem(b: EscPosBuilder, item: PrintPayloadItem): void {
   const itemName = item.variantName ? `${item.name} (${item.variantName})` : item.name;
 
   b.tallText();
-  b.bold(`${item.quantity}x ${itemName}`);
+  b.bold(`${formatQuantity(item.quantity)}x ${itemName}`);
 
   for (const option of item.options) {
     b.text(`   > ${option.name}`);
