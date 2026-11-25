@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   formatCurrency,
+  formatQuantity,
   formatDateTime,
   formatTime,
   orderTypeLabel,
@@ -58,5 +59,14 @@ describe('orderTypeLabel', () => {
 
   it('returns unknown types as-is', () => {
     expect(orderTypeLabel('OTHER')).toBe('OTHER');
+  });
+});
+
+describe('formatQuantity', () => {
+  it('prints whole units without decimals and fractions with a comma', () => {
+    expect(formatQuantity(2)).toBe('2');
+    expect(formatQuantity(0.5)).toBe('0,5');
+    expect(formatQuantity(1.25)).toBe('1,25');
+    expect(formatQuantity('3')).toBe('3');
   });
 });

@@ -67,3 +67,24 @@ export function orderTypeLabel(type: string): string {
       return type;
   }
 }
+
+/** "2", "0,5", "1,25": quantities are whole units except fractional products. */
+export function formatQuantity(value: number | string): string {
+  const rounded = Math.round(Number(value) * 1000) / 1000;
+  if (!Number.isFinite(rounded)) return String(value);
+  if (Number.isInteger(rounded)) return String(rounded);
+  return rounded.toFixed(3).replace(/0+$/, '').replace('.', ',');
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  PIX: 'Pix',
+  CASH: 'Dinheiro',
+  CREDIT_CARD: 'Credito',
+  DEBIT_CARD: 'Debito',
+  VOUCHER: 'Voucher',
+  ONLINE: 'Online',
+};
+
+export function paymentMethodLabel(method: string): string {
+  return PAYMENT_METHOD_LABELS[method] ?? method;
+}

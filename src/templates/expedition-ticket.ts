@@ -1,7 +1,7 @@
 import { EscPosBuilder } from '../escpos/builder.js';
 import type { PrintPayload } from '../types.js';
 import { printEditBanner } from './edit-banner.js';
-import { formatCurrency, formatTime, groupItemsByGuest, orderTypeLabel } from './format-utils.js';
+import { formatCurrency, formatQuantity, formatTime, groupItemsByGuest, orderTypeLabel } from './format-utils.js';
 
 export function buildExpeditionTicket(payload: PrintPayload, paperWidth: number): Buffer {
   const b = new EscPosBuilder(paperWidth);
@@ -75,7 +75,7 @@ export function buildExpeditionTicket(payload: PrintPayload, paperWidth: number)
 
       for (const item of group.items) {
         const itemName = item.variantName ? `${item.name} (${item.variantName})` : item.name;
-        const qty = `${item.quantity}x ${itemName}`;
+        const qty = `${formatQuantity(item.quantity)}x ${itemName}`;
         b.pair(qty, formatCurrency(item.totalPrice));
         groupSubtotal += item.totalPrice;
 
@@ -103,7 +103,7 @@ export function buildExpeditionTicket(payload: PrintPayload, paperWidth: number)
   } else {
     for (const item of payload.items) {
       const itemName = item.variantName ? `${item.name} (${item.variantName})` : item.name;
-      const qty = `${item.quantity}x ${itemName}`;
+      const qty = `${formatQuantity(item.quantity)}x ${itemName}`;
       b.pair(qty, formatCurrency(item.totalPrice));
 
       for (const option of item.options) {

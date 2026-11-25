@@ -56,6 +56,13 @@ export interface PrintPayload {
   edited?: boolean;
   /** O que mudou na edicao (ex.: "+ 2x Coca-Cola", "Retirada -> Entrega"). */
   editChanges?: string[];
+  /** Receipt of one table bill payment: replaces "Pedido #N" (e.g. "Mesa 4 - Conta de Ana"). */
+  receiptTitle?: string;
+  /** Service fee included in the total of a table payment receipt. */
+  serviceFee?: number;
+  serviceFeePercent?: number;
+  /** What is still owed after this payment (table, or person). */
+  remaining?: number;
 }
 
 export interface DeliveryAddress {
