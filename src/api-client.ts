@@ -43,6 +43,20 @@ export class ApiClient {
     return response;
   }
 
+  /**
+   * Points a registered printer at another Windows printer, keeping its name
+   * and routing. The server queues again the jobs that failed recently.
+   */
+  async replacePrinterDevice(
+    printerId: string,
+    deviceName: string,
+  ): Promise<{ printer: RegisteredPrinter; requeuedJobs: number }> {
+    return this.request('POST', `/agent/printers/${encodeURIComponent(printerId)}/replace-device`, {
+      agentId: this.config.agentId,
+      deviceName,
+    });
+  }
+
   async getJob(jobId: string): Promise<PrintJob> {
     return this.request<PrintJob>('GET', `/agent/print-jobs/${jobId}`);
   }

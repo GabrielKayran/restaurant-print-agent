@@ -51,6 +51,20 @@ export function registerIpcHandlers(agentService: AgentService): void {
     return agentService.getDiscoveredPrinters();
   });
 
+  ipcMain.handle('printers:refresh', async () => {
+    await agentService.refreshPrinters();
+    return agentService.getStatus();
+  });
+
+  ipcMain.handle('printers:replace', async (_event, printerId: string, deviceName: string) => {
+    try {
+      const requeuedJobs = await agentService.replacePrinter(printerId, deviceName);
+      return { success: true, requeuedJobs };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   ipcMain.handle('print:test', async (_event, _deviceName: string) => {
     try {
       // Test print is handled by creating a test job on the server side

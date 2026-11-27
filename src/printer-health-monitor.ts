@@ -11,8 +11,19 @@ export class PrinterHealthMonitor {
 
   constructor(
     private readonly apiClient: ApiClient,
-    private readonly printers: DiscoveredPrinter[],
+    private printers: DiscoveredPrinter[],
   ) {}
+
+  /** After a new scan of Windows printers. */
+  setPrinters(printers: DiscoveredPrinter[]): void {
+    this.printers = printers;
+    for (const deviceName of [...this.lastKnownStatus.keys()]) {
+      if (!printers.some((p) => p.deviceName === deviceName)) {
+        this.lastKnownStatus.delete(deviceName);
+      }
+    }
+    if (!this.timer && printers.length > 0) this.start();
+  }
 
   start(): void {
     if (this.timer || this.printers.length === 0) return;

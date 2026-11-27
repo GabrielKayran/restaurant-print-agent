@@ -8,6 +8,8 @@ export interface AgentStatus {
     name: string;
     deviceName: string;
     isOnline: boolean;
+    /** Windows no longer has a printer with this name (removed or renamed). */
+    missing: boolean;
   }>;
   discoveredPrinters: Array<{ deviceName: string; printerType: string }>;
   jobsProcessedToday: number;
@@ -36,4 +38,6 @@ export interface JobEvent {
 export interface JobFailedEvent {
   jobId: string;
   error: string;
+  deviceName: string | null;
+  type: string | null;
 }

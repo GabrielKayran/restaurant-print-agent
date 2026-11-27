@@ -5,6 +5,7 @@ import { tmpdir, platform } from 'node:os';
 import { join } from 'node:path';
 import { ApiClient } from './api-client.js';
 import { log, logError, logWarn } from './logger.js';
+import { describePrintFailure, PrinterNotFoundError } from './print-error.js';
 import { showJobFailed, showJobPrinted } from './ui.js';
 import { buildExpeditionTicket } from './templates/expedition-ticket.js';
 import { buildKitchenTicket } from './templates/kitchen-ticket.js';
@@ -21,6 +22,19 @@ import type {
 
 const MAX_LOCAL_RETRIES = 3;
 const RETRY_DELAY_MS = 5_000;
+
+/** What happened to a job, so the agent window can show failures too. */
+export type PrintOutcome =
+  | { status: 'printed'; jobId: string; type: PrintJobType; deviceName: string }
+  | {
+      status: 'failed';
+      jobId: string;
+      type: PrintJobType | null;
+      deviceName: string | null;
+      error: string;
+      printerNotFound: boolean;
+    }
+  | { status: 'skipped'; jobId: string };
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,31 +53,31 @@ export class JobProcessor {
     }
   }
 
-  async processJob(jobId: string): Promise<void> {
+  async processJob(jobId: string): Promise<PrintOutcome> {
     if (this.processing.has(jobId)) {
-      return;
+      return { status: 'skipped', jobId };
     }
 
     this.processing.add(jobId);
     try {
-      await this.executeJob(jobId);
+      return await this.executeJob(jobId);
     } finally {
       this.processing.delete(jobId);
     }
   }
 
-  private async executeJob(jobId: string): Promise<void> {
+  private async executeJob(jobId: string): Promise<PrintOutcome> {
     let job: PrintJob;
     try {
       job = await this.apiClient.getJob(jobId);
     } catch (error) {
       logError(`Falha ao buscar job ${jobId}`, error);
-      return;
+      return { status: 'skipped', jobId };
     }
 
     if (job.status !== 'PENDING') {
       log(`Job ${jobId} ja esta ${job.status}, pulando`);
-      return;
+      return { status: 'skipped', jobId };
     }
 
     const printer = this.printerMap.get(job.printerId);
@@ -72,14 +86,21 @@ export class JobProcessor {
       await this.apiClient
         .updateJobStatus(jobId, 'FAILED', 'Impressora nao registrada neste agente')
         .catch((e) => logError('Falha ao atualizar status do job', e));
-      return;
+      return {
+        status: 'failed',
+        jobId,
+        type: job.type,
+        deviceName: null,
+        error: 'Impressora nao registrada neste agente',
+        printerNotFound: false,
+      };
     }
 
     try {
       await this.apiClient.updateJobStatus(jobId, 'PRINTING');
     } catch (error) {
       logError(`Falha ao marcar job ${jobId} como PRINTING`, error);
-      return;
+      return { status: 'skipped', jobId };
     }
 
     // Generate ESC/POS buffer
@@ -92,7 +113,14 @@ export class JobProcessor {
       await this.apiClient
         .updateJobStatus(jobId, 'FAILED', `Erro no template: ${msg}`)
         .catch((e) => logError('Falha ao atualizar status do job', e));
-      return;
+      return {
+        status: 'failed',
+        jobId,
+        type: job.type,
+        deviceName: printer.deviceName,
+        error: `Erro no template: ${msg}`,
+        printerNotFound: false,
+      };
     }
 
     // Print with retries
@@ -106,22 +134,34 @@ export class JobProcessor {
         showJobPrinted(jobId, printer.deviceName);
         log(`Job ${jobId} impresso em ${printer.deviceName}`);
         await this.apiClient.updateJobStatus(jobId, 'COMPLETED');
-        return;
+        return { status: 'printed', jobId, type: job.type, deviceName: printer.deviceName };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         logWarn(`Tentativa ${attempt}/${MAX_LOCAL_RETRIES} falhou para job ${jobId}: ${msg}`);
 
-        if (attempt < MAX_LOCAL_RETRIES) {
+        // A printer missing from Windows will not come back by retrying.
+        const printerNotFound = error instanceof PrinterNotFoundError;
+        if (attempt < MAX_LOCAL_RETRIES && !printerNotFound) {
           await sleep(RETRY_DELAY_MS);
-        } else {
-          showJobFailed(jobId, msg);
-          logError(`Job ${jobId} falhou apos ${MAX_LOCAL_RETRIES} tentativas`);
-          await this.apiClient
-            .updateJobStatus(jobId, 'FAILED', `Falha na impressao: ${msg}`)
-            .catch((e) => logError('Falha ao atualizar status do job', e));
+          continue;
         }
+
+        showJobFailed(jobId, msg);
+        logError(`Job ${jobId} falhou apos ${attempt} tentativa(s)`);
+        await this.apiClient
+          .updateJobStatus(jobId, 'FAILED', msg)
+          .catch((e) => logError('Falha ao atualizar status do job', e));
+        return {
+          status: 'failed',
+          jobId,
+          type: job.type,
+          deviceName: printer.deviceName,
+          error: msg,
+          printerNotFound,
+        };
       }
     }
+    return { status: 'skipped', jobId };
   }
 
   private generateBuffer(
@@ -144,10 +184,14 @@ export class JobProcessor {
   }
 
   private async sendToPrinter(deviceName: string, buffer: Buffer): Promise<void> {
-    if (platform() === 'win32') {
-      await this.sendToPrinterWindows(deviceName, buffer);
-    } else {
-      await this.sendToPrinterLinux(deviceName, buffer);
+    try {
+      if (platform() === 'win32') {
+        await this.sendToPrinterWindows(deviceName, buffer);
+      } else {
+        await this.sendToPrinterLinux(deviceName, buffer);
+      }
+    } catch (error) {
+      throw describePrintFailure(error, deviceName);
     }
   }
 

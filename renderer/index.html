@@ -96,7 +96,14 @@
       </div>
 
       <!-- Printers -->
-      <div class="section-label">Impressoras</div>
+      <div id="printer-alert" class="printer-alert" hidden>
+        <span class="printer-alert-icon">!</span>
+        <span id="printer-alert-text"></span>
+      </div>
+      <div class="section-row">
+        <div class="section-label">Impressoras</div>
+        <button id="btn-refresh-printers" class="btn-link" type="button">Procurar impressoras</button>
+      </div>
       <div id="printers-list" class="printers-list">
         <div class="empty-state">Nenhuma impressora detectada</div>
       </div>

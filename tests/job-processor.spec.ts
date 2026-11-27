@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { execSync } from 'node:child_process';
 import { JobProcessor } from '../src/job-processor.js';
 import type { ApiClient } from '../src/api-client.js';
 import type { PrintJob, RegisteredPrinter } from '../src/types.js';
@@ -93,6 +94,7 @@ describe('JobProcessor', () => {
   let apiClient: ReturnType<typeof createMockApiClient>;
 
   beforeEach(() => {
+    vi.mocked(execSync).mockReset();
     apiClient = createMockApiClient();
     processor = new JobProcessor(apiClient as unknown as ApiClient);
     processor.updatePrinters([makePrinter()]);
@@ -101,7 +103,14 @@ describe('JobProcessor', () => {
   it('processes a PENDING job successfully', async () => {
     apiClient.getJob.mockResolvedValue(makeJob());
 
-    await processor.processJob('job-1');
+    const outcome = await processor.processJob('job-1');
+
+    expect(outcome).toEqual({
+      status: 'printed',
+      jobId: 'job-1',
+      type: 'KITCHEN_TICKET',
+      deviceName: 'EPSON_TM20',
+    });
 
     expect(apiClient.getJob).toHaveBeenCalledWith('job-1');
     expect(apiClient.updateJobStatus).toHaveBeenCalledWith('job-1', 'PRINTING');
@@ -121,6 +130,30 @@ describe('JobProcessor', () => {
 
     // getJob should only be called once
     expect(apiClient.getJob).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails at once with a readable message when Windows has no such printer', async () => {
+    apiClient.getJob.mockResolvedValue(makeJob());
+    vi.mocked(execSync).mockImplementationOnce(() => {
+      throw new Error(
+        'Command failed: powershell -NoProfile -EncodedCommand QQBk ' +
+          '<S S="Error">"OpenPrinter falhou: 1801"_x000D__x000A_</S>',
+      );
+    });
+
+    const outcome = await processor.processJob('job-1');
+
+    expect(execSync).toHaveBeenCalledTimes(1);
+    expect(apiClient.updateJobStatus).toHaveBeenCalledWith(
+      'job-1',
+      'FAILED',
+      expect.stringContaining('"EPSON_TM20" nao encontrada no Windows'),
+    );
+    expect(outcome).toMatchObject({
+      status: 'failed',
+      deviceName: 'EPSON_TM20',
+      printerNotFound: true,
+    });
   });
 
   it('skips already non-PENDING jobs', async () => {
