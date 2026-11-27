@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('agent', {
   setupAgent: (key: string) => ipcRenderer.invoke('agent:setup', key),
   clearCredentials: () => ipcRenderer.invoke('agent:clear'),
   getPrinters: () => ipcRenderer.invoke('printers:list'),
+  refreshPrinters: () => ipcRenderer.invoke('printers:refresh'),
+  replacePrinter: (printerId: string, deviceName: string) =>
+    ipcRenderer.invoke('printers:replace', printerId, deviceName),
   printTest: (deviceName: string) => ipcRenderer.invoke('print:test', deviceName),
   setAutostart: (enabled: boolean) => ipcRenderer.invoke('autostart:set', enabled),
   getAutostartEnabled: () => ipcRenderer.invoke('autostart:get'),

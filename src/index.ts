@@ -93,7 +93,9 @@ async function main(): Promise<void> {
   let processingQueue = Promise.resolve();
   function enqueueJob(jobId: string): void {
     processingQueue = processingQueue
-      .then(() => jobProcessor.processJob(jobId))
+      .then(async () => {
+        await jobProcessor.processJob(jobId);
+      })
       .catch((error) => logError(`Erro inesperado ao processar job ${jobId}`, error));
   }
 

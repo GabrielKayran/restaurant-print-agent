@@ -6,6 +6,11 @@ interface AgentAPI {
   setupAgent(key: string): Promise<{ success: boolean; error?: string }>;
   clearCredentials(): Promise<{ success: boolean; error?: string }>;
   getPrinters(): Promise<Array<{ deviceName: string; printerType: string }>>;
+  refreshPrinters(): Promise<AgentStatus>;
+  replacePrinter(
+    printerId: string,
+    deviceName: string,
+  ): Promise<{ success: boolean; requeuedJobs?: number; error?: string }>;
   printTest(deviceName: string): Promise<{ success: boolean; error?: string }>;
   setAutostart(enabled: boolean): Promise<{ success: boolean }>;
   getAutostartEnabled(): Promise<boolean>;
@@ -22,7 +27,13 @@ interface AgentStatus {
   errorMessage: string | null;
   unitName: string | null;
   agentId: string | null;
-  printers: Array<{ id: string; name: string; deviceName: string; isOnline: boolean }>;
+  printers: Array<{
+    id: string;
+    name: string;
+    deviceName: string;
+    isOnline: boolean;
+    missing: boolean;
+  }>;
   discoveredPrinters: Array<{ deviceName: string; printerType: string }>;
   jobsProcessedToday: number;
   lastJobAt: string | null;
@@ -50,6 +61,8 @@ interface JobEvent {
 interface JobFailedEvent {
   jobId: string;
   error: string;
+  deviceName: string | null;
+  type: string | null;
 }
 
 declare global {
@@ -60,8 +73,18 @@ declare global {
 
 // ===== State =====
 let currentView: 'setup' | 'dashboard' | 'settings' = 'setup';
-const recentJobs: Array<{ time: string; desc: string; type: string; success: boolean }> = [];
+const recentJobs: Array<{
+  time: string;
+  desc: string;
+  type: string;
+  success: boolean;
+  error?: string;
+}> = [];
 const MAX_RECENT_JOBS = 20;
+let lastStatus: AgentStatus | null = null;
+/** Windows printer picked for each missing printer, kept across re-renders. */
+const replacementChoice = new Map<string, string>();
+const replacementResult = new Map<string, { text: string; error: boolean }>();
 
 // ===== DOM refs =====
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -116,6 +139,7 @@ function initSetup(): void {
 
 // ===== Dashboard view =====
 function updateDashboard(status: AgentStatus): void {
+  lastStatus = status;
   // Status badge
   const dot = $('status-dot');
   const text = $('status-text');
@@ -164,30 +188,149 @@ function updateDashboard(status: AgentStatus): void {
     $('metric-last-job').textContent = '\u2014';
   }
 
-  // Printers list
-  const printersList = $('printers-list');
-  if (status.printers.length === 0 && status.discoveredPrinters.length === 0) {
-    printersList.innerHTML = '<div class="empty-state">Nenhuma impressora detectada</div>';
-  } else {
-    const items = status.printers.length > 0 ? status.printers : status.discoveredPrinters.map((p) => ({
-      id: '',
-      name: p.deviceName,
-      deviceName: p.deviceName,
-      isOnline: false,
-    }));
-
-    printersList.innerHTML = items.map((p) => `
-      <div class="printer-item">
-        <span class="printer-status-dot ${p.isOnline ? 'online' : 'offline'}"></span>
-        <div class="printer-info">
-          <div class="printer-name">${escapeHtml(p.name || p.deviceName)}</div>
-          <div class="printer-meta">${escapeHtml(p.deviceName)}</div>
-        </div>
-      </div>
-    `).join('');
-  }
+  renderPrinters(status);
 
   // Jobs feed
+  renderJobsFeed();
+}
+
+/**
+ * The Windows printer that most likely replaced a missing one: the same name
+ * with a suffix Windows adds on reinstall ("(Cópia 1)"), else none.
+ */
+function suggestReplacement(missingName: string, windowsNames: string[]): string {
+  const base = missingName.toLowerCase();
+  return windowsNames.find((name) => name.toLowerCase().startsWith(base)) ?? '';
+}
+
+function renderPrinters(status: AgentStatus): void {
+  const printersList = $('printers-list');
+  const missing = status.printers.filter((p) => p.missing);
+
+  const alert = $('printer-alert');
+  alert.hidden = missing.length === 0;
+  $('printer-alert-text').textContent =
+    missing.length === 1
+      ? `A impressora "${missing[0].deviceName}" não existe mais no Windows. Escolha abaixo qual impressora usar no lugar dela.`
+      : `${missing.length} impressoras não existem mais no Windows. Escolha abaixo qual usar no lugar de cada uma.`;
+
+  if (status.printers.length === 0 && status.discoveredPrinters.length === 0) {
+    printersList.innerHTML = '<div class="empty-state">Nenhuma impressora detectada</div>';
+    return;
+  }
+
+  const items = status.printers.length > 0 ? status.printers : status.discoveredPrinters.map((p) => ({
+    id: '',
+    name: p.deviceName,
+    deviceName: p.deviceName,
+    isOnline: false,
+    missing: false,
+  }));
+  const windowsNames = status.discoveredPrinters.map((p) => p.deviceName);
+
+  printersList.innerHTML = items.map((p) => {
+    if (!p.missing) {
+      return `
+        <div class="printer-item">
+          <span class="printer-status-dot ${p.isOnline ? 'online' : 'offline'}"></span>
+          <div class="printer-info">
+            <div class="printer-name">${escapeHtml(p.name || p.deviceName)}</div>
+            <div class="printer-meta">${escapeHtml(p.deviceName)}</div>
+          </div>
+        </div>`;
+    }
+
+    if (!replacementChoice.has(p.id)) {
+      replacementChoice.set(p.id, suggestReplacement(p.deviceName, windowsNames));
+    }
+    const chosen = replacementChoice.get(p.id) ?? '';
+    const result = replacementResult.get(p.id);
+    const options = [
+      `<option value="">Escolha a impressora do Windows…</option>`,
+      ...windowsNames.map(
+        (name) =>
+          `<option value="${escapeHtml(name)}"${name === chosen ? ' selected' : ''}>${escapeHtml(name)}</option>`,
+      ),
+    ].join('');
+
+    return `
+      <div class="printer-item missing" data-printer-id="${escapeHtml(p.id)}">
+        <span class="printer-status-dot missing"></span>
+        <div class="printer-info">
+          <div class="printer-name">${escapeHtml(p.name || p.deviceName)}</div>
+          <div class="printer-missing-text">Não encontrada no Windows: ${escapeHtml(p.deviceName)}</div>
+        </div>
+        <div class="printer-fix">
+          <select class="printer-fix-select" aria-label="Impressora do Windows para ${escapeHtml(p.name || p.deviceName)}">${options}</select>
+          <button type="button" class="btn btn-small btn-primary printer-fix-apply"${chosen ? '' : ' disabled'}>Usar esta</button>
+        </div>
+        ${result ? `<div class="printer-fix-result${result.error ? ' error' : ''}">${escapeHtml(result.text)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function initPrinterFix(): void {
+  const list = $('printers-list');
+
+  list.addEventListener('change', (event) => {
+    const select = event.target as HTMLElement;
+    if (!select.classList.contains('printer-fix-select')) return;
+    const item = select.closest<HTMLElement>('.printer-item');
+    const printerId = item?.dataset.printerId;
+    if (!printerId) return;
+    replacementChoice.set(printerId, (select as HTMLSelectElement).value);
+    const apply = item.querySelector<HTMLButtonElement>('.printer-fix-apply');
+    if (apply) apply.disabled = !(select as HTMLSelectElement).value;
+  });
+
+  list.addEventListener('click', async (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('.printer-fix-apply');
+    if (!button) return;
+    const printerId = button.closest<HTMLElement>('.printer-item')?.dataset.printerId;
+    const deviceName = printerId ? replacementChoice.get(printerId) : '';
+    if (!printerId || !deviceName) return;
+
+    button.disabled = true;
+    button.textContent = 'Trocando...';
+    const result = await window.agent.replacePrinter(printerId, deviceName);
+    if (result.success) {
+      const requeued = result.requeuedJobs ?? 0;
+      replacementChoice.delete(printerId);
+      replacementResult.delete(printerId);
+      addFeedEntry(
+        `Agora imprime em ${deviceName}` +
+          (requeued > 0 ? ` — ${requeued} impressão(ões) que falharam voltaram para a fila` : ''),
+        '',
+        true,
+      );
+    } else {
+      replacementResult.set(printerId, {
+        text: result.error || 'Não foi possível trocar a impressora.',
+        error: true,
+      });
+    }
+    if (lastStatus) updateDashboard(lastStatus);
+  });
+
+  const refresh = $<HTMLButtonElement>('btn-refresh-printers');
+  refresh.addEventListener('click', async () => {
+    refresh.disabled = true;
+    refresh.textContent = 'Procurando...';
+    try {
+      const status = await window.agent.refreshPrinters();
+      updateDashboard(status);
+    } finally {
+      refresh.disabled = false;
+      refresh.textContent = 'Procurar impressoras';
+    }
+  });
+}
+
+function addFeedEntry(desc: string, type: string, success: boolean, error?: string): void {
+  const d = new Date();
+  const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  recentJobs.unshift({ time, desc, type, success, error });
+  if (recentJobs.length > MAX_RECENT_JOBS) recentJobs.pop();
   renderJobsFeed();
 }
 
@@ -201,7 +344,7 @@ function renderJobsFeed(): void {
   feed.innerHTML = recentJobs.map((j) => `
     <div class="job-item">
       <span class="job-time">${escapeHtml(j.time)}</span>
-      <span class="job-desc">${escapeHtml(j.desc)}</span>
+      <span class="job-desc">${escapeHtml(j.desc)}${j.error ? `<span class="job-error">${escapeHtml(j.error)}</span>` : ''}</span>
       <span class="job-type">${escapeHtml(formatJobType(j.type))}</span>
       <span class="job-status-icon ${j.success ? 'success' : 'failed'}">${j.success ? '\u2713' : '\u2717'}</span>
     </div>
@@ -361,16 +504,12 @@ function initEventListeners(): void {
   });
 
   window.agent.onJobFailed((event: JobFailedEvent) => {
-    const d = new Date();
-    const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-    recentJobs.unshift({
-      time,
-      desc: `Job #${event.jobId.slice(-6)} falhou`,
-      type: '',
-      success: false,
-    });
-    if (recentJobs.length > MAX_RECENT_JOBS) recentJobs.pop();
-    renderJobsFeed();
+    addFeedEntry(
+      `Job #${event.jobId.slice(-6)} falhou${event.deviceName ? ` em ${event.deviceName}` : ''}`,
+      event.type ?? '',
+      false,
+      event.error,
+    );
   });
 
   const updateBanner = document.getElementById('update-banner')!;
@@ -407,6 +546,7 @@ async function init(): Promise<void> {
   initSetup();
   initSettings();
   initTestPrint();
+  initPrinterFix();
   initNavigation();
   initEventListeners();
 

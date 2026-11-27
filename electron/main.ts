@@ -102,6 +102,25 @@ app.whenReady().then(() => {
   registerIpcHandlers(agentService);
   setupStatusForwarding(agentService, getWindow);
 
+  // A printer Windows no longer has: bring the window up, where it is fixed.
+  let lastMissingAlertAt = 0;
+  agentService.on('printer:missing', (deviceName: string) => {
+    if (Date.now() - lastMissingAlertAt < 10 * 60 * 1000) return;
+    lastMissingAlertAt = Date.now();
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title: 'Impressora não encontrada',
+        body: `"${deviceName}" não existe mais no Windows. Clique para escolher a impressora certa.`,
+      });
+      notification.on('click', () => {
+        const target = getWindow();
+        target?.show();
+        target?.focus();
+      });
+      notification.show();
+    }
+  });
+
   // Show window once content is ready
   win.once('ready-to-show', () => {
     win.show();
